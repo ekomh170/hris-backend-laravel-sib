@@ -1,59 +1,52 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+<img src="public/assets/logo-hris.jpg" alt="HRIS Logo" width="150" height="150">
 
-## About Laravel
+# 🏢 HRIS Backend - Laravel SIB
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> **Human Resource Information System**  
+> Complete REST API Backend with JWT Authentication
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+[![Laravel](https://img.shields.io/badge/Laravel-11.x-red.svg)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.3-blue.svg)](https://www.php.net)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-orange.svg)](https://www.mysql.com)
+[![JWT](https://img.shields.io/badge/JWT-Auth-green.svg)](https://github.com/tymondesigns/jwt-auth)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+</div>
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 📖 Tentang Proyek
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**HRIS Backend Laravel SIB** adalah sistem backend REST API lengkap untuk manajemen Human Resource (HR). Sistem ini dirancang untuk memudahkan pengelolaan karyawan, absensi, cuti, penilaian kinerja, slip gaji, dan notifikasi dalam satu platform terintegrasi.
 
-## Laravel Sponsors
+### ✨ Fitur Utama
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Modul | Deskripsi |
+|-------|-----------|
+| 🔐 **JWT Authentication** | Login/Logout dengan secure token |
+| 👥 **Employee Management** | CRUD karyawan lengkap dengan filter |
+| ⏰ **Attendance System** | Check-in/out dengan auto-calculate work hours |
+| 🏖️ **Leave Management** | Pengajuan & approval cuti |
+| ⭐ **Performance Reviews** | Penilaian kinerja karyawan (1-10 stars) |
+| 💰 **Salary Slips** | Generate slip gaji bulanan otomatis |
+| 🛡️ **RBAC** | Role-Based Access Control (Admin HR, Manager, Employee) |
+| 🔔 **Notifications** | Real-time notification & broadcast system - (Opsional) |
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+<div align="center">
 
-## Contributing
+### Terima kasih telah menggunakan HRIS Backend kami! 🙏
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Proyek ini dikembangkan dengan sepenuh hati oleh tim kami untuk membantu  
+mempermudah pengelolaan SDM di perusahaan Anda.
 
-## Code of Conduct
+**Tim Pengembang:**  
+Eko Muchamad Haryono • Raka Muhammad Rabbani • Ryandra Athaya Saleh  
+Octaviani Nursalsabila • Yossy Indra Kusuma
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**FWD Batch 3 - Kelompok HRIS** 🚀
 
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+</div>
