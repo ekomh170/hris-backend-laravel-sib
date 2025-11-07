@@ -21,6 +21,10 @@
 
 **HRIS Backend Laravel SIB** adalah sistem backend REST API lengkap untuk manajemen Human Resource (HR). Sistem ini dirancang untuk memudahkan pengelolaan karyawan, absensi, cuti, penilaian kinerja, slip gaji, dan notifikasi dalam satu platform terintegrasi.
 
+### 🎯 Tujuan Pengembangan
+
+Proyek ini dikembangkan sebagai **Final Project** untuk menyelesaikan program **Studi Independen Bersertifikat (SIB) Batch 3 - Full Stack Web Developer** yang diselenggarakan oleh **Kampus Merdeka** bekerjasama dengan **PT. Nurul Fikri Academy (NF Computer)**. 
+
 ### ✨ Fitur Utama
 
 | Modul | Deskripsi |
@@ -36,17 +40,16 @@
 
 ---
 
-<div align="center">
-
 ### Terima kasih telah menggunakan HRIS Backend kami! 🙏
 
 Proyek ini dikembangkan dengan sepenuh hati oleh tim kami untuk membantu  
 mempermudah pengelolaan SDM di perusahaan Anda.
 
 **Tim Pengembang:**  
-Eko Muchamad Haryono • Raka Muhammad Rabbani • Ryandra Athaya Saleh  
-Octaviani Nursalsabila • Yossy Indra Kusuma
+Eko Muchamad Haryono  - Lead Backend Developer
+Raka Muhammad Rabbani  - Backend Developer
+Ryandra Athaya Saleh  - Lead Frontend Developer
+Octaviani Nursalsabila  - UI/UX Developer
+Yossy Indra Kusuma  - Frontend Developer
 
 **FWD Batch 3 - Kelompok HRIS** 🚀
-
-</div>
