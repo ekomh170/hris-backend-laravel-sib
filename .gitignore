@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Ignore all files in Postman folder
+/postman/
+
+# Ignore all files in Docs folder
+/docs/
