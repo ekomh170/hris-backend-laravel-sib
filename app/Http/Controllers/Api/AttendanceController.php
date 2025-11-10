@@ -25,18 +25,38 @@ class AttendanceController extends Controller
 
         abort_if(!$employee, 422, 'Employee profile not yet available');
 
-        $attendance = Attendance::firstOrCreate([
-            'employee_id' => $employee->id,
-            'date' => now()->toDateString(),
-        ]);
+        $today = now()->toDateString();
 
-        abort_if($attendance->check_in_time, 409, 'Already checked in today');
+        // Cari data absen hari ini
+        $attendance = Attendance::where('employee_id', $employee->id)
+            ->whereDate('date', $today)
+            ->first();
+        
+        // Kalau sudah ada data absen hari ini
+        if ($attendance && $attendance->check_in_time) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already checked in today',
+                'data' => $attendance,
+            ], 409);
+        }
 
-        $attendance->check_in_time = now();
-        $attendance->save();
+        // Kalau belum ada data absen hari ini, buat baru
+        if (!$attendance){
+            $attendance = Attendance::create([
+                'employee_id' => $employee->id,
+                'date' => $today,
+                'check_in_time' => now(),
+            ]);
+        } else {
+            // Kalau ada data absen tapi belum check-in (jarang terjadi)
+            $attendance->check_in_time = now();
+            $attendance->save();
+        }
 
         return response()->json([
             'success' => true,
+            'message' => 'Check-in successful',
             'data' => $attendance,
         ]);
     }
@@ -55,19 +75,38 @@ class AttendanceController extends Controller
 
         abort_if(!$employee, 422, 'Employee profile not yet available');
 
+        $today = now()->toDateString();
+
+        // Cari data absen hari ini
         $attendance = Attendance::where('employee_id', $employee->id)
-            ->whereDate('date', now()->toDateString())
-            ->firstOrFail();
+            ->whereDate('date', $today)
+            ->first();
 
-        abort_if(!$attendance->check_in_time, 422, 'Not yet checked in');
-        abort_if($attendance->check_out_time, 409, 'Already checked out');
+        // Kalau belum ada data absen hari ini atau belum check-in
+        if (!$attendance || !$attendance->check_in_time) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have not checked in today',
+            ], 422);
+        }
 
+        // Kalau sudah check-out hari ini
+        if ($attendance->check_out_time) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already checked out today',
+                'data' => $attendance,
+            ], 409);
+        }
+
+        // validasi check-out
         $attendance->check_out_time = now();
         $attendance->computeWorkHour(); // Otomatis hitung work_hour (dikurangi 1 jam break)
         $attendance->save();
 
         return response()->json([
             'success' => true,
+            'message' => 'Check-out successful',
             'data' => $attendance,
         ]);
     }
