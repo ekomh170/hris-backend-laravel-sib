@@ -230,19 +230,25 @@ class EmployeeController extends Controller
      *
      * DUAL MODE OPERATION:
      * Mode 1 - Create User Baru + Employee:
-     *   Required: name, email, password, role, employee_code, position, department, join_date, employment_status
-     *   Optional: contact, manager_id
+     *   Required: name, email, password, role, position, department, join_date, employment_status
+     *   Optional: employee_code (auto-generate jika kosong), contact, manager_id
      *
      * Mode 2 - Gunakan Existing User:
-     *   Required: user_id, employee_code, position, department, join_date, employment_status
-     *   Optional: contact, manager_id
+     *   Required: user_id, position, department, join_date, employment_status
+     *   Optional: employee_code (auto-generate jika kosong), contact, manager_id
      *
      * Validation Rules:
-     * - employee_code: unique, alpha_num (no special chars)
+     * - employee_code: unique, alpha_num (nullable - auto-generate format HR-XX jika kosong)
      * - email: unique di tabel users
      * - user_id: unique di tabel employees (1 user = 1 employee max)
+     * - role: enum (employee|manager|admin_hr)
      * - employment_status: enum (permanent|contract|intern|resigned)
      * - manager_id: must exist in users table
+     *
+     * Auto-Generate Employee Code:
+     * - Format: HR-01, HR-02, HR-03, dst
+     * - Otomatis increment dari code terakhir
+     * - Retry mechanism untuk mencegah collision
      *
      * Database Transaction: Semua operasi di-wrap dalam transaction untuk consistency
      *
@@ -266,7 +272,7 @@ class EmployeeController extends Controller
             'name' => 'required_without:user_id|string|max:255',
             'email' => 'required_without:user_id|email|unique:users,email', // Email harus unique
             'password' => 'required_without:user_id|string|min:6',
-            'role' => 'required_without:user_id|in:employee,manager', // Role terbatas
+            'role' => 'required_without:user_id|in:employee,manager,admin_hr', // Tambah admin_hr role
 
             /* --- MODE 2: GUNAKAN EXISTING USER --- */
             // Required jika name tidak ada (mode existing user)
@@ -274,7 +280,7 @@ class EmployeeController extends Controller
             'user_id' => 'required_without:name|exists:users,id|unique:employees,user_id',
 
             /* --- EMPLOYEE DATA (BOTH MODES) --- */
-            'employee_code' => 'required|alpha_num|unique:employees,employee_code', // CRITICAL: Must be unique
+            'employee_code' => 'nullable|alpha_num|unique:employees,employee_code', // Optional - akan auto-generate jika kosong
             'position' => 'required|string',
             'department' => 'required|string',
             'join_date' => 'required|date',
@@ -306,10 +312,14 @@ class EmployeeController extends Controller
             }
             // Jika user_id ada, skip user creation (Mode 2: existing user)
 
-            /* --- STEP 2: CREATE EMPLOYEE PROFILE --- */
+            /* --- STEP 2: GENERATE EMPLOYEE CODE --- */
+            // Auto-generate employee_code jika tidak disediakan
+            $employeeCode = $data['employee_code'] ?? $this->generateEmployeeCode();
+
+            /* --- STEP 3: CREATE EMPLOYEE PROFILE --- */
             $employeeData = [
                 'user_id' => $userId, // Link ke user (existing atau baru dibuat)
-                'employee_code' => $data['employee_code'], // UNIQUE constraint
+                'employee_code' => $employeeCode, // UNIQUE constraint (auto-generated atau manual)
                 'position' => $data['position'],
                 'department' => $data['department'],
                 'join_date' => $data['join_date'],
@@ -324,7 +334,7 @@ class EmployeeController extends Controller
             // Eager load relasi untuk response
             $employee->load(['user', 'manager']);
 
-            /* --- STEP 3: COMMIT TRANSACTION --- */
+            /* --- STEP 4: COMMIT TRANSACTION --- */
             DB::commit();
 
             // Return success response dengan status 201 (Created)
@@ -392,7 +402,7 @@ class EmployeeController extends Controller
             /* --- USER DATA (OPTIONAL UPDATE) --- */
             'name' => 'sometimes|string|max:255', // Optional field
             'email' => "sometimes|email|unique:users,email,{$employee->user_id}", // Exclude current user dari unique check
-            'password' => 'sometimes|string|min:6', // Will be hashed if provided
+            'password' => 'sometimes|nullable|string|min:6', // Nullable dan akan di-hash jika provided
             'role' => 'sometimes|in:employee,manager,admin_hr', // Extended role options
             'status_active' => 'sometimes|boolean', // Untuk activate/deactivate user
 
@@ -418,7 +428,10 @@ class EmployeeController extends Controller
             // Build user update array hanya untuk field yang ada di request
             if (isset($data['name'])) $userUpdateData['name'] = $data['name'];
             if (isset($data['email'])) $userUpdateData['email'] = $data['email'];
-            if (isset($data['password'])) $userUpdateData['password'] = Hash::make($data['password']); // Hash password
+            // Hash password hanya jika tidak null/empty
+            if (isset($data['password']) && !empty($data['password'])) {
+                $userUpdateData['password'] = Hash::make($data['password']);
+            }
             if (isset($data['role'])) $userUpdateData['role'] = $data['role'];
             if (isset($data['status_active'])) $userUpdateData['status_active'] = $data['status_active'];
 
@@ -592,5 +605,46 @@ class EmployeeController extends Controller
 
         // Abort dengan 403 jika user tidak ada atau bukan Admin HR
         abort_unless($user && $user->isAdminHr(), 403, 'Forbidden');
+    }
+
+    /**
+     * PRIVATE METHOD: Auto-generate employee code dengan format HR-XX
+     *
+     * Format: HR-01, HR-02, HR-03, dst
+     * Logic:
+     * - Ambil employee_code terakhir dengan prefix "HR-"
+     * - Extract nomor urut dan increment +1
+     * - Pad dengan leading zero (2 digit)
+     * - Pastikan unique dengan retry mechanism jika collision
+     *
+     * @return string Employee code yang unique (contoh: HR-01, HR-02)
+     */
+    private function generateEmployeeCode(): string
+    {
+        // Loop untuk memastikan mendapat code yang unique
+        do {
+            // Ambil employee code terakhir dengan prefix HR-
+            $lastEmployee = Employee::where('employee_code', 'like', 'HR-%')
+                ->orderBy('employee_code', 'desc')
+                ->first();
+
+            if ($lastEmployee) {
+                // Extract nomor dari employee_code terakhir (HR-01 -> 01)
+                $lastNumber = (int) substr($lastEmployee->employee_code, 3);
+                $nextNumber = $lastNumber + 1;
+            } else {
+                // Jika belum ada employee dengan prefix HR-, mulai dari 1
+                $nextNumber = 1;
+            }
+
+            // Format dengan leading zero: HR-01, HR-02, dst
+            $newEmployeeCode = 'HR-' . str_pad($nextNumber, 2, '0', STR_PAD_LEFT);
+
+            // Check apakah code sudah ada (untuk mencegah race condition)
+            $exists = Employee::where('employee_code', $newEmployeeCode)->exists();
+
+        } while ($exists); // Retry jika masih ada collision
+
+        return $newEmployeeCode;
     }
 }
