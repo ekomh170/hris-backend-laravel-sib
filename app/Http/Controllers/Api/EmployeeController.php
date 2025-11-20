@@ -59,20 +59,20 @@ class EmployeeController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // Mendapatkan authenticated user dari JWT token
+        // Mendapatkan pengguna yang sudah login dari JWT token
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
-        // Authorization check - hanya Admin HR dan Manager yang bisa akses
+        // Cek otorisasi - hanya Admin HR dan Manager yang bisa akses
         if ($user->isAdminHr()) {
-            // Admin HR dapat melihat semua employee
+            // Admin HR dapat melihat semua karyawan
             $query = Employee::with(['user', 'manager']);
         } elseif ($user->isManager()) {
-            // Manager hanya bisa melihat employee yang di-manage
+            // Manager hanya bisa melihat karyawan yang dibawahi
             $query = Employee::with(['user', 'manager'])
                 ->managedBy($user->id);
         } else {
-            // Employee biasa tidak bisa akses daftar employee
+            // Karyawan biasa tidak bisa akses daftar karyawan
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied'
@@ -80,80 +80,80 @@ class EmployeeController extends Controller
         }
 
         /* =================================
-         * SEARCH & FILTER FUNCTIONALITY
+         * FITUR PENCARIAN & FILTER
          * ================================= */
 
-        // Global search - mencari di nama, email, employee_code (defined di Employee model scope)
+        // Pencarian global - mencari di nama, email, employee_code (didefinisikan di Employee model scope)
         if ($search = $request->query('search')) {
             $query->search($search);
         }
 
-        // Filter berdasarkan departemen (case-insensitive partial match)
+        // Filter berdasarkan departemen (tidak sensitif huruf besar/kecil dengan pencocokan sebagian)
         if ($department = $request->query('department')) {
             $query->where('department', 'like', "%{$department}%");
         }
 
-        // Filter berdasarkan status kerja (exact match)
-        // Nilai valid: permanent, contract, intern, resigned
+        // Filter berdasarkan status kerja (pencocokan persis)
+        // Nilai yang valid: permanent, contract, intern, resigned
         if ($status = $request->query('employment_status')) {
             $query->where('employment_status', $status);
         }
 
-        // Filter berdasarkan posisi/jabatan (case-insensitive partial match)
+        // Filter berdasarkan posisi/jabatan (tidak sensitif huruf besar/kecil dengan pencocokan sebagian)
         if ($position = $request->query('position')) {
             $query->where('position', 'like', "%{$position}%");
         }
 
-        // Filter berdasarkan manager (exact match dengan manager user_id)
+        // Filter berdasarkan manager (pencocokan persis dengan manager user_id)
         if ($managerId = $request->query('manager_id')) {
             $query->where('manager_id', $managerId);
         }
 
         /* =================================
-         * SORTING FUNCTIONALITY
+         * FITUR PENGURUTAN DATA
          * ================================= */
 
-        // Sorting parameters dengan default values
+        // Parameter pengurutan dengan nilai default
         $sortBy = $request->query('sort_by', 'employee_code');
         $sortOrder = $request->query('sort_order', 'asc');
 
-        // Whitelist kolom yang boleh di-sort untuk security
+        // Daftar kolom yang diizinkan untuk diurutkan demi keamanan
         $allowedSorts = ['name', 'employee_code', 'position', 'department', 'join_date'];
 
         if (in_array($sortBy, $allowedSorts)) {
             if ($sortBy === 'name') {
-                // Khusus untuk sort by name, perlu join ke tabel users
+                // Khusus untuk pengurutan berdasarkan nama, perlu join ke tabel users
                 $query->orderBy('users.name', $sortOrder);
                 $query->join('users', 'employees.user_id', '=', 'users.id');
             } else {
-                // Sort berdasarkan kolom di tabel employees
+                // Pengurutan berdasarkan kolom di tabel employees
                 $query->orderBy($sortBy, $sortOrder);
             }
         } else {
-            // Fallback sorting jika parameter tidak valid
+            // Pengurutan cadangan jika parameter tidak valid
             $query->orderBy('employee_code', 'asc');
         }
 
         /* =================================
-         * PENGATURAN PAGINATION
+         * PENGATURAN PAGINASI
          * ================================= */
 
         // Batasi per_page maksimal 100 untuk performa, default 10
         $perPage = min($request->query('per_page', 10), 100);
 
-        // Jalankan query dengan pagination Laravel
+        // Jalankan query dengan paginasi Laravel
         $employees = $query->paginate($perPage);
 
         /* =================================
-         * FORMAT RESPONSE JSON
+         * FORMAT RESPON JSON
          * ================================= */
 
-        // Return standardized JSON response dengan pagination metadata lengkap
+        // Mengembalikan respon JSON standar dengan metadata paginasi lengkap
         return response()->json([
             'success' => true,
             'message' => 'Employee data retrieved successfully',
             'data' => [
-                // Pagination info
+                // Informasi paginasi
                 'current_page' => $employees->currentPage(),
                 'per_page' => $employees->perPage(),
                 'total' => $employees->total(),
@@ -161,17 +161,17 @@ class EmployeeController extends Controller
                 'from' => $employees->firstItem(),
                 'to' => $employees->lastItem(),
 
-                // Employee data dengan resource transformation
+                // Data karyawan dengan transformasi resource
                 'data' => EmployeeResource::collection($employees->items()),
 
-                // Navigation URLs
+                // URL navigasi
                 'first_page_url' => $employees->url(1),
                 'last_page_url' => $employees->url($employees->lastPage()),
                 'next_page_url' => $employees->nextPageUrl(),
                 'prev_page_url' => $employees->previousPageUrl(),
                 'path' => $employees->path(),
 
-                // Pagination links untuk UI
+                // Link paginasi untuk UI
                 'links' => $employees->linkCollection()->toArray(),
             ],
         ]);
@@ -191,26 +191,26 @@ class EmployeeController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        // Mendapatkan authenticated user
+        // Mendapatkan pengguna yang sudah login
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
-        // Find employee dengan eager loading relasi, throw 404 jika tidak ada
+        // Cari karyawan dengan eager loading relasi, lempar 404 jika tidak ada
         $employee = Employee::with(['user', 'manager'])->findOrFail($id);
 
         /* =================================
-         * AUTHORIZATION CHECK
+         * CEK OTORISASI
          * ================================= */
 
-        // Multi-level authorization:
-        // 1. Admin HR - full access
-        // 2. Manager - hanya employee yang di-manage
-        // 3. Employee - hanya data sendiri
+        // Otorisasi bertingkat:
+        // 1. Admin HR - akses penuh
+        // 2. Manager - hanya karyawan yang dibawahi
+        // 3. Employee - hanya data diri sendiri
         if ($user->isAdminHr() ||
             ($user->isManager() && $employee->manager_id == $user->id) ||
             ($user->id == $employee->user_id)) {
 
-            // Return employee detail dengan resource transformation
+            // Kembalikan detail karyawan dengan transformasi resource
             return response()->json([
                 'success' => true,
                 'message' => 'Employee details retrieved successfully',
@@ -218,7 +218,7 @@ class EmployeeController extends Controller
             ]);
         }
 
-        // Access denied jika tidak memenuhi authorization rules
+        // Akses ditolak jika tidak memenuhi aturan otorisasi
         return response()->json([
             'success' => false,
             'message' => 'Forbidden'
@@ -238,7 +238,7 @@ class EmployeeController extends Controller
      *   Optional: employee_code (auto-generate jika kosong), contact, manager_id
      *
      * Validation Rules:
-     * - employee_code: unique, alpha_num (nullable - auto-generate format HR-XX jika kosong)
+     * - employee_code: unique, string (nullable - auto-generate format HR-XX jika kosong)
      * - email: unique di tabel users
      * - user_id: unique di tabel employees (1 user = 1 employee max)
      * - role: enum (employee|manager|admin_hr)
@@ -259,85 +259,85 @@ class EmployeeController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // Authorization check - hanya Admin HR
+        // Cek otorisasi - hanya Admin HR
         $this->authorizeAdmin();
 
         /* =================================
-         * VALIDATION RULES - DUAL MODE
+         * ATURAN VALIDASI - DUAL MODE
          * ================================= */
 
         $data = $request->validate([
-            /* --- MODE 1: CREATE USER BARU --- */
-            // Required jika user_id tidak ada (mode create user baru)
+            /* --- MODE 1: BUAT USER BARU --- */
+            // Wajib jika user_id tidak ada (mode buat user baru)
             'name' => 'required_without:user_id|string|max:255',
-            'email' => 'required_without:user_id|email|unique:users,email', // Email harus unique
+            'email' => 'required_without:user_id|email|unique:users,email', // Email harus unik
             'password' => 'required_without:user_id|string|min:6',
-            'role' => 'required_without:user_id|in:employee,manager,admin_hr', // Tambah admin_hr role
+            'role' => 'required_without:user_id|in:employee,manager,admin_hr', // Tambah peran admin_hr
 
-            /* --- MODE 2: GUNAKAN EXISTING USER --- */
-            // Required jika name tidak ada (mode existing user)
-            // user_id harus unique di employees (1 user = 1 employee max)
+            /* --- MODE 2: GUNAKAN USER YANG SUDAH ADA --- */
+            // Wajib jika name tidak ada (mode user yang sudah ada)
+            // user_id harus unik di employees (1 user = 1 karyawan maksimal)
             'user_id' => 'required_without:name|exists:users,id|unique:employees,user_id',
 
-            /* --- EMPLOYEE DATA (BOTH MODES) --- */
-            'employee_code' => 'nullable|alpha_num|unique:employees,employee_code', // Optional - akan auto-generate jika kosong
+            /* --- DATA KARYAWAN (KEDUA MODE) --- */
+            'employee_code' => 'nullable|string|max:50|unique:employees,employee_code', // Opsional - akan auto-generate jika kosong, menghapus batasan alpha_num
             'position' => 'required|string',
             'department' => 'required|string',
             'join_date' => 'required|date',
-            'employment_status' => 'required|in:permanent,contract,intern,resigned', // Enum values
-            'contact' => 'nullable|string', // Optional
-            'manager_id' => 'nullable|exists:users,id', // Must exist if provided
+            'employment_status' => 'required|in:permanent,contract,intern,resigned', // Nilai enum
+            'contact' => 'nullable|string', // Opsional
+            'manager_id' => 'nullable|exists:users,id', // Harus ada jika diberikan
         ]);
 
         /* =================================
-         * DATABASE TRANSACTION START
+         * MULAI TRANSAKSI DATABASE
          * ================================= */
 
         DB::beginTransaction();
         try {
-            // Determine user ID (dari existing atau akan dibuat baru)
+            // Tentukan user ID (dari yang sudah ada atau akan dibuat baru)
             $userId = $data['user_id'] ?? null;
 
-            /* --- STEP 1: HANDLE USER CREATION --- */
+            /* --- LANGKAH 1: TANGANI PEMBUATAN USER --- */
             if (!$userId) {
-                // Mode 1: Create user baru sekaligus employee
+                // Mode 1: Buat user baru sekaligus karyawan
                 $user = User::create([
                     'name' => $data['name'],
                     'email' => $data['email'],
-                    'password' => Hash::make($data['password']), // Hash password untuk security
+                    'password' => Hash::make($data['password']), // Hash password untuk keamanan
                     'role' => $data['role'],
-                    'status_active' => true, // Set aktif by default
+                    'status_active' => true, // Set aktif secara default
                 ]);
                 $userId = $user->id;
             }
-            // Jika user_id ada, skip user creation (Mode 2: existing user)
+            // Jika user_id ada, lewati pembuatan user (Mode 2: user yang sudah ada)
 
-            /* --- STEP 2: GENERATE EMPLOYEE CODE --- */
+            /* --- LANGKAH 2: GENERATE KODE KARYAWAN --- */
             // Auto-generate employee_code jika tidak disediakan
             $employeeCode = $data['employee_code'] ?? $this->generateEmployeeCode();
 
-            /* --- STEP 3: CREATE EMPLOYEE PROFILE --- */
+            /* --- LANGKAH 3: BUAT PROFIL KARYAWAN --- */
             $employeeData = [
-                'user_id' => $userId, // Link ke user (existing atau baru dibuat)
-                'employee_code' => $employeeCode, // UNIQUE constraint (auto-generated atau manual)
+                'user_id' => $userId, // Link ke user (yang sudah ada atau baru dibuat)
+                'employee_code' => $employeeCode, // Constraint UNIQUE (auto-generated atau manual)
                 'position' => $data['position'],
                 'department' => $data['department'],
                 'join_date' => $data['join_date'],
                 'employment_status' => $data['employment_status'],
-                'contact' => $data['contact'] ?? null, // Nullable field
+                'contact' => $data['contact'] ?? null, // Field nullable
                 'manager_id' => $data['manager_id'] ?? null, // Foreign key ke users
             ];
 
-            // Insert employee record
+            // Insert record karyawan
             $employee = Employee::create($employeeData);
 
             // Eager load relasi untuk response
             $employee->load(['user', 'manager']);
 
-            /* --- STEP 4: COMMIT TRANSACTION --- */
+            /* --- LANGKAH 4: COMMIT TRANSAKSI --- */
             DB::commit();
 
-            // Return success response dengan status 201 (Created)
+            // Kembalikan response sukses dengan status 201 (Created)
             return response()->json([
                 'success' => true,
                 'message' => 'Employee created successfully',
@@ -345,11 +345,11 @@ class EmployeeController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            /* --- ERROR HANDLING --- */
-            // Rollback semua changes jika ada error
+            /* --- PENANGANAN ERROR --- */
+            // Rollback semua perubahan jika ada error
             DB::rollBack();
 
-            // Return error dengan detail untuk debugging
+            // Kembalikan error dengan detail untuk debugging
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create employee: ' . $e->getMessage(),
@@ -388,82 +388,82 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        // Authorization check - hanya Admin HR
+        // Cek otorisasi - hanya Admin HR
         $this->authorizeAdmin();
 
-        // Find employee dengan relasi user, throw 404 jika tidak ada
+        // Cari karyawan dengan relasi user, lempar 404 jika tidak ada
         $employee = Employee::with('user')->findOrFail($id);
 
         /* =================================
-         * VALIDATION RULES - PARTIAL UPDATE
+         * ATURAN VALIDASI - UPDATE SEBAGIAN
          * ================================= */
 
         $data = $request->validate([
-            /* --- USER DATA (OPTIONAL UPDATE) --- */
-            'name' => 'sometimes|string|max:255', // Optional field
-            'email' => "sometimes|email|unique:users,email,{$employee->user_id}", // Exclude current user dari unique check
-            'password' => 'sometimes|nullable|string|min:6', // Nullable dan akan di-hash jika provided
-            'role' => 'sometimes|in:employee,manager,admin_hr', // Extended role options
-            'status_active' => 'sometimes|boolean', // Untuk activate/deactivate user
+            /* --- DATA USER (UPDATE OPSIONAL) --- */
+            'name' => 'sometimes|string|max:255', // Field opsional
+            'email' => "sometimes|email|unique:users,email,{$employee->user_id}", // Kecualikan user saat ini dari pengecekan unik
+            'password' => 'sometimes|nullable|string|min:6', // Nullable dan akan di-hash jika diberikan
+            'role' => 'sometimes|in:employee,manager,admin_hr', // Opsi peran yang diperluas
+            'status_active' => 'sometimes|boolean', // Untuk mengaktifkan/menonaktifkan user
 
-            /* --- EMPLOYEE DATA (OPTIONAL UPDATE) --- */
-            'employee_code' => "sometimes|alpha_num|unique:employees,employee_code,{$employee->id}", // Exclude current employee
+            /* --- DATA KARYAWAN (UPDATE OPSIONAL) --- */
+            'employee_code' => "sometimes|string|max:50|unique:employees,employee_code,{$employee->id}", // Kecualikan karyawan saat ini, menghapus batasan alpha_num
             'position' => 'sometimes|string',
             'department' => 'sometimes|string',
             'join_date' => 'sometimes|date',
             'employment_status' => 'sometimes|in:permanent,contract,intern,resigned',
-            'contact' => 'nullable|string', // Can be set to null
-            'manager_id' => 'nullable|exists:users,id', // Can be set to null atau valid user_id
+            'contact' => 'nullable|string', // Bisa diset ke null
+            'manager_id' => 'nullable|exists:users,id', // Bisa diset ke null atau user_id yang valid
         ]);
 
         /* =================================
-         * DATABASE TRANSACTION START
+         * MULAI TRANSAKSI DATABASE
          * ================================= */
 
         DB::beginTransaction();
         try {
-            /* --- STEP 1: PREPARE USER UPDATE DATA --- */
+            /* --- LANGKAH 1: SIAPKAN DATA UPDATE USER --- */
             $userUpdateData = [];
 
-            // Build user update array hanya untuk field yang ada di request
+            // Bangun array update user hanya untuk field yang ada di request
             if (isset($data['name'])) $userUpdateData['name'] = $data['name'];
             if (isset($data['email'])) $userUpdateData['email'] = $data['email'];
-            // Hash password hanya jika tidak null/empty
+            // Hash password hanya jika tidak null/kosong
             if (isset($data['password']) && !empty($data['password'])) {
                 $userUpdateData['password'] = Hash::make($data['password']);
             }
             if (isset($data['role'])) $userUpdateData['role'] = $data['role'];
             if (isset($data['status_active'])) $userUpdateData['status_active'] = $data['status_active'];
 
-            // Update user record jika ada data yang berubah
+            // Update record user jika ada data yang berubah
             if (!empty($userUpdateData)) {
                 $employee->user->update($userUpdateData);
             }
 
-            /* --- STEP 2: PREPARE EMPLOYEE UPDATE DATA --- */
+            /* --- LANGKAH 2: SIAPKAN DATA UPDATE KARYAWAN --- */
             $employeeUpdateData = [];
 
-            // Build employee update array hanya untuk field yang ada di request
+            // Bangun array update karyawan hanya untuk field yang ada di request
             if (isset($data['employee_code'])) $employeeUpdateData['employee_code'] = $data['employee_code'];
             if (isset($data['position'])) $employeeUpdateData['position'] = $data['position'];
             if (isset($data['department'])) $employeeUpdateData['department'] = $data['department'];
             if (isset($data['join_date'])) $employeeUpdateData['join_date'] = $data['join_date'];
             if (isset($data['employment_status'])) $employeeUpdateData['employment_status'] = $data['employment_status'];
-            if (isset($data['contact'])) $employeeUpdateData['contact'] = $data['contact']; // Can be null
-            if (isset($data['manager_id'])) $employeeUpdateData['manager_id'] = $data['manager_id']; // Can be null
+            if (isset($data['contact'])) $employeeUpdateData['contact'] = $data['contact']; // Bisa null
+            if (isset($data['manager_id'])) $employeeUpdateData['manager_id'] = $data['manager_id']; // Bisa null
 
-            // Update employee record jika ada data yang berubah
+            // Update record karyawan jika ada data yang berubah
             if (!empty($employeeUpdateData)) {
                 $employee->update($employeeUpdateData);
             }
 
-            /* --- STEP 3: REFRESH RELATIONS & COMMIT --- */
+            /* --- LANGKAH 3: REFRESH RELASI & COMMIT --- */
             // Reload relasi untuk response terbaru
             $employee->load(['user', 'manager']);
 
             DB::commit();
 
-            // Return success response dengan data terbaru
+            // Kembalikan response sukses dengan data terbaru
             return response()->json([
                 'success' => true,
                 'message' => 'Employee updated successfully',
@@ -471,11 +471,11 @@ class EmployeeController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            /* --- ERROR HANDLING --- */
-            // Rollback semua changes jika ada error
+            /* --- PENANGANAN ERROR --- */
+            // Rollback semua perubahan jika ada error
             DB::rollBack();
 
-            // Return error dengan detail untuk debugging
+            // Kembalikan error dengan detail untuk debugging
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update employee: ' . $e->getMessage(),
@@ -503,11 +503,11 @@ class EmployeeController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        // Authorization check - hanya Admin HR
+        // Cek otorisasi - hanya Admin HR
         $this->authorizeAdmin();
 
-        // Find and delete employee (throw 404 jika tidak ada)
-        // NOTE: Ini hard delete, user record tetap ada
+        // Cari dan hapus karyawan (lempar 404 jika tidak ada)
+        // CATATAN: Ini hard delete, record user tetap ada
         Employee::findOrFail($id)->delete();
 
         return response()->json([
@@ -534,12 +534,12 @@ class EmployeeController extends Controller
      */
     public function getManagers(Request $request): JsonResponse
     {
-        // Get authenticated user
+        // Ambil pengguna yang sudah login
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
         /* =================================
-         * AUTHORIZATION CHECK
+         * CEK OTORISASI
          * ================================= */
 
         // Hanya Admin HR dan Manager yang bisa mengakses daftar manager
@@ -551,19 +551,19 @@ class EmployeeController extends Controller
         }
 
         /* =================================
-         * BUILD QUERY
+         * BANGUN QUERY
          * ================================= */
 
-        // Base query: ambil user dengan role manager dan status aktif
+        // Query dasar: ambil user dengan peran manager dan status aktif
         $query = User::where('role', 'manager')
             ->where('status_active', true)
-            ->select('id', 'name', 'email', 'role'); // Select minimal fields untuk performa
+            ->select('id', 'name', 'email', 'role'); // Select field minimal untuk performa
 
         /* =================================
-         * SEARCH FUNCTIONALITY
+         * FITUR PENCARIAN
          * ================================= */
 
-        // Pencarian berdasarkan nama atau email (case-insensitive)
+        // Pencarian berdasarkan nama atau email (tidak sensitif huruf besar/kecil)
         if ($search = $request->query('search')) {
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -571,7 +571,7 @@ class EmployeeController extends Controller
             });
         }
 
-        // Execute query dengan sorting
+        // Eksekusi query dengan pengurutan
         $managers = $query->orderBy('name', 'asc')->get();
 
         return response()->json([
@@ -599,11 +599,11 @@ class EmployeeController extends Controller
      */
     private function authorizeAdmin(): void
     {
-        // Get authenticated user dari JWT token
+        // Ambil pengguna yang sudah login dari JWT token
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
-        // Abort dengan 403 jika user tidak ada atau bukan Admin HR
+        // Hentikan dengan 403 jika user tidak ada atau bukan Admin HR
         abort_unless($user && $user->isAdminHr(), 403, 'Forbidden');
     }
 
@@ -621,29 +621,29 @@ class EmployeeController extends Controller
      */
     private function generateEmployeeCode(): string
     {
-        // Loop untuk memastikan mendapat code yang unique
+        // Loop untuk memastikan mendapat kode yang unik
         do {
-            // Ambil employee code terakhir dengan prefix HR-
+            // Ambil kode karyawan terakhir dengan prefix HR-
             $lastEmployee = Employee::where('employee_code', 'like', 'HR-%')
                 ->orderBy('employee_code', 'desc')
                 ->first();
 
             if ($lastEmployee) {
-                // Extract nomor dari employee_code terakhir (HR-01 -> 01)
+                // Ekstrak nomor dari employee_code terakhir (HR-01 -> 01)
                 $lastNumber = (int) substr($lastEmployee->employee_code, 3);
                 $nextNumber = $lastNumber + 1;
             } else {
-                // Jika belum ada employee dengan prefix HR-, mulai dari 1
+                // Jika belum ada karyawan dengan prefix HR-, mulai dari 1
                 $nextNumber = 1;
             }
 
             // Format dengan leading zero: HR-01, HR-02, dst
             $newEmployeeCode = 'HR-' . str_pad($nextNumber, 2, '0', STR_PAD_LEFT);
 
-            // Check apakah code sudah ada (untuk mencegah race condition)
+            // Cek apakah kode sudah ada (untuk mencegah race condition)
             $exists = Employee::where('employee_code', $newEmployeeCode)->exists();
 
-        } while ($exists); // Retry jika masih ada collision
+        } while ($exists); // Retry jika masih ada bentrokan
 
         return $newEmployeeCode;
     }

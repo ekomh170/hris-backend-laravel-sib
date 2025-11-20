@@ -22,21 +22,26 @@ class EmployeeResource extends JsonResource
             'join_date' => $this->join_date?->format('Y-m-d'),
             'employment_status' => $this->employment_status,
             'contact' => $this->contact,
-            
+
             // Relasi user tanpa field yang sensitive
             'user' => [
                 'id' => $this->user?->id,
                 'name' => $this->user?->name,
                 'email' => $this->user?->email,
                 'role' => $this->user?->role,
+                'status_active' => $this->user?->status_active,
             ],
-            
-            // Relasi manager (optional)
-            'manager' => $this->when($this->manager, [
-                'id' => $this->manager?->id,
-                'name' => $this->manager?->name,
-                'email' => $this->manager?->email,
-            ]),
+
+            // Relasi manager (always present with consistent structure)
+            'manager' => $this->manager ? [
+                'id' => $this->manager->id,
+                'name' => $this->manager->name,
+                'email' => $this->manager->email,
+            ] : [
+                'id' => null,
+                'name' => null,
+                'email' => null,
+            ],
         ];
     }
 }
