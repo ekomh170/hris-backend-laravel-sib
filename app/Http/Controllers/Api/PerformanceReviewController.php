@@ -175,6 +175,11 @@ class PerformanceReviewController extends Controller
      * @param int $id
      * @return JsonResponse
      */
+    /**
+     * Update performance review (Admin/Manager only)
+     * - Manager & Admin HR bisa ubah semua field termasuk employee_id
+     * - Tapi hanya untuk Manager dia bisa melakuka update review yang mereka buat sendiri (kecuali Admin HR bisa semua)
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         /** @var User $user */
@@ -184,14 +189,18 @@ class PerformanceReviewController extends Controller
 
         $review = PerformanceReview::findOrFail($id);
 
-        // Hanya reviewer yang membuatnya yang bisa update (kecuali admin)
+        // === KEAMANAN ===
+        // Admin HR boleh edit semua review
+        // Manager HANYA boleh edit review yang DIA buat sendiri
         if (!$user->isAdminHr()) {
-            abort_unless($review->reviewer_id === $user->id, 403, 'Forbidden');
+            abort_unless($review->reviewer_id === $user->id, 403, 'You can only update reviews you created');
         }
 
+        // === VALIDASI: Manager & Admin HR sama-sama boleh ubah employee_id ===
         $validated = $request->validate([
-            'period' => 'sometimes|string|max:20',
-            'total_star' => 'sometimes|integer|min:1|max:10',
+            'employee_id'        => 'sometimes|exists:employees,id',
+            'period'             => 'sometimes|string|max:20',
+            'total_star'         => 'sometimes|integer|min:1|max:10',
             'review_description' => 'sometimes|string',
         ]);
 
@@ -200,7 +209,7 @@ class PerformanceReviewController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Performance review updated successfully',
-            'data' => $review->load(['employee.user', 'reviewer']),
+            'data'    => $review->fresh()->load(['employee.user', 'reviewer']),
         ]);
     }
 
