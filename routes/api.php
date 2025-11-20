@@ -88,14 +88,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('leave-requests', [LeaveRequestController::class, 'index'])
         ->middleware('role:admin_hr,manager');
 
-    // // Approve cuti (Admin HR & Manager only)
-    // Route::patch('leave-requests/{id}/approve', [LeaveRequestController::class, 'approve'])
-    //     ->middleware('role:admin_hr,manager');
-
-    // // Reject cuti (Admin HR & Manager only)
-    // Route::patch('leave-requests/{id}/reject', [LeaveRequestController::class, 'reject'])
-    //     ->middleware('role:admin_hr,manager');
-
+    // Review (approve/reject) permohonan cuti (Admin HR & Manager only)
     Route::patch('/leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
      ->name('leave-requests.review');
 
@@ -144,7 +137,7 @@ Route::middleware(['auth:api'])->group(function () {
     // Update slip gaji (Admin HR only)
     Route::put('salary-slips/{id}', [SalarySlipController::class, 'update'])
         ->middleware('role:admin_hr');
-
+ 
     // Hapus slip gaji (Admin HR only)
     Route::delete('salary-slips/{id}', [SalarySlipController::class, 'destroy'])
         ->middleware('role:admin_hr');
