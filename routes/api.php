@@ -89,18 +89,10 @@ Route::middleware(['auth:api'])->group(function () {
         ->middleware('role:admin_hr,manager');
 
     // Review (approve/reject) permohonan cuti (Admin HR & Manager only)
-    // Route::match(['put', 'patch'], 'leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
-    // ->middleware('role:admin_hr,manager')
-    // ->name('leave-requests.review');
-
     Route::patch('leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
     ->middleware('role:admin_hr,manager');
 
     // ========== Performance Reviews ==========
-    // Review kinerja user yang login
-    Route::get('performance-reviews/me', [PerformanceReviewController::class, 'me'])
-        ->middleware('role:employee');
-
     // List semua review kinerja
     Route::get('performance-reviews', [PerformanceReviewController::class, 'index'])
         ->middleware('role:admin_hr,manager,employee');
@@ -108,6 +100,10 @@ Route::middleware(['auth:api'])->group(function () {
     // Buat review kinerja baru (Admin HR & Manager only)
     Route::post('performance-reviews', [PerformanceReviewController::class, 'store'])
         ->middleware('role:admin_hr,manager');
+
+    // Review kinerja user yang login
+    Route::get('performance-reviews/me', [PerformanceReviewController::class, 'me'])
+        ->middleware('role:admin_hr,employee');
 
     // Detail review kinerja by ID
     Route::get('performance-reviews/{id}', [PerformanceReviewController::class, 'show'])

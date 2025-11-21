@@ -84,26 +84,32 @@ class PerformanceReviewController extends Controller
      *
      * @param Request $request
      * @return JsonResponse
+     * - Employee biasa → lihat review dirinya
+     * - Admin HR → juga bisa lihat review dirinya sendiri
      */
     public function me(Request $request): JsonResponse
     {
-        /** @var User $user */
+        /** @var \App\Models\User $user */
         $user = Auth::guard('api')->user();
-        $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Profile employee belum tersedia');
+        // Tentukan employee_id yang dipakai
+        $employeeId = $user->employee?->id ?? ($user->isAdminHr() ? $user->id : null);
 
-        $query = PerformanceReview::ofEmployee($employee->id)
-            ->with('reviewer');
+        abort_if(is_null($employeeId), 422, 'Employee profile not available');
 
-        // Filter by period (optional)
+        $query = PerformanceReview::with(['employee.user', 'reviewer'])
+            ->where('employee_id', $employeeId);
+
         if ($period = $request->query('period')) {
-            $query->inPeriod($period);
+            $query->where('period', $period);
         }
+
+        $reviews = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('created_at', 'desc')->get(),
+            'message' => 'Your performance reviews retrieved successfully',
+            'data'    => PerformanceReviewResource::collection($reviews),
         ]);
     }
 
@@ -112,29 +118,63 @@ class PerformanceReviewController extends Controller
      *
      * @param Request $request
      * @return JsonResponse
+     * Aturan:
+     * - Admin HR TIDAK boleh buat review untuk dirinya sendiri
+     * - Hanya Manager yang boleh buat review untuk Admin HR
+     * - Admin HR & Manager boleh buat review untuk karyawan biasa
      */
     public function store(Request $request): JsonResponse
     {
-        /** @var User $user */
+        /** @var \App\Models\User $user */
         $user = Auth::guard('api')->user();
 
         abort_unless($user->isAdminHr() || $user->isManager(), 403, 'Forbidden');
 
         $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'period' => 'required|string|max:20',
-            'total_star' => 'required|integer|min:1|max:10',
+            'employee_id'        => 'required|exists:employees,id',
+            'period'             => 'required|string|max:20',
+            'total_star'         => 'required|integer|min:1|max:10',
             'review_description' => 'required|string',
         ]);
 
-        $validated['reviewer_id'] = $user->id;
+        $employeeId = $validated['employee_id'];
 
-        $review = PerformanceReview::create($validated);
+        // === DETEKSI: Apakah ini review untuk Admin HR? ===
+        $targetEmployee = \App\Models\Employee::with('user')->find($employeeId);
+        $isTargetAdminHr = $targetEmployee?->user?->isAdminHr() ?? false;
+
+        // 1. Kalau yang dibuat review adalah Admin HR sendiri → DILARANG!
+        if ($employeeId == $user->id && $user->isAdminHr()) {
+            abort(403, 'Anda tidak diperbolehkan membuat performance review untuk diri sendiri.');
+        }
+
+        // 2. Kalau target adalah Admin HR → HANYA Manager yang boleh buat
+        if ($isTargetAdminHr) {
+            abort_unless($user->isManager(), 403, 'Hanya Manager yang boleh membuat performance review untuk Admin HR.');
+        }
+
+        // 3. Kalau bukan Admin HR (karyawan biasa) → Admin HR & Manager boleh buat
+        //    Tapi Manager hanya boleh buat untuk anak buahnya
+        if ($user->isManager() && !$isTargetAdminHr) {
+            abort_unless(
+                $targetEmployee?->manager_id === $user->id,
+                403, 'Anda hanya boleh membuat review untuk anggota tim Anda sendiri.'
+            );
+        }
+
+        // Semua lolos → buat review
+        $review = PerformanceReview::create([
+            'employee_id'        => $employeeId,
+            'reviewer_id'        => $user->id,
+            'period'             => $validated['period'],
+            'total_star'         => $validated['total_star'],
+            'review_description' => $validated['review_description'],
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Performance review created successfully',
-            'data' => $review->load(['employee.user', 'reviewer']),
+            'data'    => $review->load(['employee.user', 'reviewer']),
         ], 201);
     }
 
@@ -177,26 +217,49 @@ class PerformanceReviewController extends Controller
      */
     /**
      * Update performance review (Admin/Manager only)
-     * - Manager & Admin HR bisa ubah semua field termasuk employee_id
-     * - Tapi hanya untuk Manager dia bisa melakuka update review yang mereka buat sendiri (kecuali Admin HR bisa semua)
+     * Aturan baru:
+     * - Admin HR TIDAK boleh update review milik dirinya sendiri
+     * - Hanya Manager yang boleh update review milik Admin HR
+     * - Manager hanya boleh update review yang DIA buat sendiri (untuk karyawan biasa)
+     * - Admin HR boleh update review semua karyawan biasa
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        /** @var User $user */
+        /** @var \App\Models\User $user */
         $user = Auth::guard('api')->user();
 
         abort_unless($user->isAdminHr() || $user->isManager(), 403, 'Forbidden');
 
-        $review = PerformanceReview::findOrFail($id);
+        $review = PerformanceReview::with('employee.user')->findOrFail($id);
 
-        // === KEAMANAN ===
-        // Admin HR boleh edit semua review
-        // Manager HANYA boleh edit review yang DIA buat sendiri
-        if (!$user->isAdminHr()) {
-            abort_unless($review->reviewer_id === $user->id, 403, 'You can only update reviews you created');
+        // === DETEKSI: Apakah ini review milik Admin HR? ===
+        $isReviewForAdminHr = (
+            $review->employee_id == $review->employee?->user?->id &&
+            $review->employee?->user?->isAdminHr()
+        );
+
+        // 1. Admin HR TIDAK boleh update review milik dirinya sendiri
+        if ($review->employee_id === $user->id && $user->isAdminHr()) {
+            abort(403, 'Anda tidak diperbolehkan mengubah performance review diri sendiri.');
         }
 
-        // === VALIDASI: Manager & Admin HR sama-sama boleh ubah employee_id ===
+        // 2. Jika ini review untuk Admin HR → HANYA Manager yang boleh update
+        if ($isReviewForAdminHr) {
+            abort_unless($user->isManager(), 403, 'Hanya Manager yang boleh mengubah performance review Admin HR.');
+        }
+
+        // 3. Jika bukan review untuk Admin HR (karyawan biasa)
+        //    → Manager hanya boleh update review yang DIA buat sendiri
+        if ($user->isManager() && !$isReviewForAdminHr) {
+            abort_unless(
+                $review->reviewer_id === $user->id,
+                403, 'Anda hanya boleh mengubah performance review yang Anda buat sendiri.'
+            );
+        }
+
+        // Admin HR boleh update semua review (kecuali milik dirinya sendiri) → sudah lolos di atas
+
+        // === Validasi data ===
         $validated = $request->validate([
             'employee_id'        => 'sometimes|exists:employees,id',
             'period'             => 'sometimes|string|max:20',
@@ -208,11 +271,11 @@ class PerformanceReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Performance review updated successfully',
+            'message' => 'Performance review berhasil diperbarui.',
             'data'    => $review->fresh()->load(['employee.user', 'reviewer']),
         ]);
     }
-
+       
     /**
      * Delete performance review (Admin only)
      *
