@@ -114,19 +114,19 @@ class LeaveRequest extends BaseModel
      * Approve leave request
      */
     public function review(int $reviewerId, string $status, ?string $note = null): void
-{
-    // Pastikan status valid
-    $statusEnum = $status === 'Approved' ? LeaveStatus::APPROVED : LeaveStatus::REJECTED;
-    
-    $this->status = $statusEnum;
-    $this->reviewed_by = $reviewerId;
+    {
+        // Pastikan status valid
+        $statusEnum = $status === 'Approved' ? LeaveStatus::APPROVED : LeaveStatus::REJECTED;
+        
+        $this->status = $statusEnum;
+        $this->reviewed_by = $reviewerId;
 
-    // Default note otomatis sesuai status
-    $this->reviewer_note = $note ?? match ($statusEnum) {
-        LeaveStatus::APPROVED => 'Approved, Selamat berlibur!',
-        LeaveStatus::REJECTED => 'Rejected, Permintaan cuti ditolak.',
-    };
+        // Default note otomatis sesuai status
+        $this->reviewer_note = $note ?? match ($statusEnum) {
+            LeaveStatus::APPROVED => 'Approved, Selamat berlibur!',
+            LeaveStatus::REJECTED => 'Rejected, Permintaan cuti ditolak.',
+        };
 
-    $this->save();
-}
+        $this->save();
+    }
 }

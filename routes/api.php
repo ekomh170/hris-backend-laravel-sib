@@ -61,15 +61,15 @@ Route::middleware(['auth:api'])->group(function () {
     // ========== Attendances ==========
     // Absen masuk dengan lokasi & waktu
     Route::post('attendances/check-in', [AttendanceController::class, 'checkIn'])
-        ->middleware('role:employee');
+        ->middleware('role:employee,admin_hr');
 
     // Absen pulang dengan waktu
     Route::post('attendances/check-out', [AttendanceController::class, 'checkOut'])
-        ->middleware('role:employee');
+        ->middleware('role:employee,admin_hr');
 
     // History absensi user yang login
     Route::get('attendances/me', [AttendanceController::class, 'me'])
-        ->middleware('role:employee');
+        ->middleware('role:employee,admin_hr');
 
     // List semua absensi (Admin HR & Manager only)
     Route::get('attendances', [AttendanceController::class, 'index'])
@@ -78,19 +78,23 @@ Route::middleware(['auth:api'])->group(function () {
     // ========== Leave Requests ==========
     // Ajukan permohonan cuti
     Route::post('leave-requests', [LeaveRequestController::class, 'store'])
-        ->middleware('role:employee');
+        ->middleware('role:employee,admin_hr');
 
     // Riwayat cuti user yang login
     Route::get('leave-requests/me', [LeaveRequestController::class, 'me'])
-        ->middleware('role:employee');
+        ->middleware('role:employee,admin_hr');
 
     // List semua permohonan cuti (Admin HR & Manager)
     Route::get('leave-requests', [LeaveRequestController::class, 'index'])
         ->middleware('role:admin_hr,manager');
 
     // Review (approve/reject) permohonan cuti (Admin HR & Manager only)
-    Route::patch('/leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
-     ->name('leave-requests.review');
+    // Route::match(['put', 'patch'], 'leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
+    // ->middleware('role:admin_hr,manager')
+    // ->name('leave-requests.review');
+
+    Route::patch('leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
+    ->middleware('role:admin_hr,manager');
 
     // ========== Performance Reviews ==========
     // Review kinerja user yang login

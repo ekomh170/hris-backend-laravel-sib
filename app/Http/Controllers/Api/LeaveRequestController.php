@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaveStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeaveRequestResource;
 use App\Models\LeaveRequest;
@@ -12,6 +13,27 @@ use Illuminate\Support\Facades\Auth;
 
 class LeaveRequestController extends Controller
 {
+    // Helper: dapatkan employee_id (sama seperti di AttendanceController)
+    private function resolveEmployeeId(): int
+    {
+        /** @var User $user */
+        $user = Auth::guard('api')->user();
+
+        // Karyawan biasa
+        if ($user->employee) {
+            return $user->employee->id;
+        }
+
+        // Admin HR boleh pakai user_id sebagai employee_id untuk cuti pribadi
+        if ($user->isAdminHr()) {
+            return $user->id;
+        }
+
+        abort(422, 'Employee profile not yet available');
+    }
+
+
+
     /**
      * Store a newly created leave request
      *
@@ -20,29 +42,26 @@ class LeaveRequestController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        /** @var User $user */
-        $user = Auth::guard('api')->user();
-        $employee = $user->employee;
-
-        abort_if(!$employee, 422, 'Employee profile not yet available');
+        $employeeId = $this->resolveEmployeeId();
 
         $data = $request->validate([
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'reason' => 'nullable|string',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'reason'     => 'nullable|string|max:1000',
         ]);
 
         $leaveRequest = LeaveRequest::create([
-            'employee_id' => $employee->id,
-            'start_date' => $data['start_date'],
-            'end_date' => $data['end_date'],
-            'reason' => $data['reason'] ?? null,
-            'status' => 'Pending',
+            'employee_id' => $employeeId,
+            'start_date'  => $data['start_date'],
+            'end_date'    => $data['end_date'],
+            'reason'      => $data['reason'],
+            'status'      => LeaveStatus::PENDING->value, // Konsisten pakai enum
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $leaveRequest,
+            'message' => 'Pengajuan cuti berhasil dikirim',
+            'data'    => $leaveRequest->load('employee.user'),
         ], 201);
     }
 
@@ -53,19 +72,15 @@ class LeaveRequestController extends Controller
      */
     public function me(): JsonResponse
     {
-        /** @var User $user */
-        $user = Auth::guard('api')->user();
-        $employee = $user->employee;
+        $employeeId = $this->resolveEmployeeId();
 
-        abort_if(!$employee, 422, 'Employee profile not yet available');
-
-        $leaveRequests = LeaveRequest::where('employee_id', $employee->id)
-            ->orderByDesc('id')
+        $leaveRequests = LeaveRequest::where('employee_id', $employeeId)
+            ->orderByDesc('created_at')
             ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $leaveRequests,
+            'data'    => LeaveRequestResource::collection($leaveRequests),
         ]);
     }
 
@@ -145,59 +160,76 @@ class LeaveRequestController extends Controller
         /**
      * Review (Approve/Reject) leave request
      *
+     * Aturan baru:
+     * - Admin HR TIDAK BOLEH review cuti sendiri
+     * - Hanya Manager yang boleh review cuti Admin HR
+     * - Admin HR boleh review cuti karyawan biasa
+     * - Manager hanya boleh review anak buahnya
      * @param Request $request
      * @param string $id
      * @return JsonResponse
      */
     public function review(Request $request, string $id): JsonResponse
     {
-        /** @var User $user */
+        /** @var \App\Models\User $user */
         $user = Auth::guard('api')->user();
 
         abort_unless($user->isAdminHr() || $user->isManager(), 403, 'Forbidden');
 
-        $leaveRequest = LeaveRequest::findOrFail($id);
+        $leaveRequest = LeaveRequest::with('employee.user')->findOrFail($id);
 
-        // Jika manager: pastikan ini anggota timnya
-        if ($user->isManager()) {
-            abort_unless(
-                $leaveRequest->employee?->manager_id === $user->id,
-                403,
-                'Anda hanya boleh mereview cuti anggota tim sendiri'
-            );
+        // === DETEKSI: Apakah ini cuti milik Admin HR? ===
+        $isLeaveFromAdminHr = (
+            $leaveRequest->employee_id == $leaveRequest->employee?->user?->id &&
+            $leaveRequest->employee?->user?->isAdminHr()
+        );
+
+        // 1. Admin HR tidak boleh review cuti sendiri
+        if ($leaveRequest->employee_id === $user->id && $user->isAdminHr()) {
+            abort(403, 'Anda tidak diperbolehkan mereview cuti sendiri. Hanya Manager yang boleh.');
         }
 
-        // VALIDASI DIPERKUAT: status WAJIB diisi dan hanya boleh 'approve' atau 'reject'
+        // 2. Manager hanya boleh review anak buahnya, KECUALI kalau cuti dari Admin HR
+        if ($user->isManager()) {
+            if (!$isLeaveFromAdminHr) {
+                abort_unless(
+                    $leaveRequest->employee?->manager_id === $user->id,
+                    403,
+                    'Anda hanya boleh mereview cuti anggota tim Anda sendiri.'
+                );
+            }
+        }
+
+        // === Validasi input ===
         $request->validate([
-            'status' => [
-                'required',
-                'in:approve,reject',
-                function ($attribute, $value, $fail) {
-                    if (!in_array($value, ['approve', 'reject'])) {
-                        $fail('Status harus dipilih: Setujui atau Tolak.');
-                    }
-                }
-            ],
+            'status'        => 'required|in:approve,reject',
             'reviewer_note' => 'nullable|string|max:500',
-        ], [
-            'status.required' => 'Anda harus memilih status: Setujui atau Tolak.',
-            'status.in'       => 'Status tidak valid. Pilih "approve" atau "reject".',
         ]);
 
-        $status = $request->input('status');
-        $note   = $request->input('reviewer_note');
+        $statusInput = $request->input('status');
+        $newStatus   = $statusInput === 'approve' ? 'Approved' : 'Rejected';
 
-        // Proses review
-        $leaveRequest->review($user->id, $status, $note);
+        // === Tentukan reviewer_note otomatis kalau kosong ===
+        $note = $request->input('reviewer_note');
+        if (empty($note)) {
+            $note = $newStatus === 'Approved'
+                ? 'Permohonan cuti telah disetujui.'
+                : 'Permohonan cuti telah ditolak.';
+        }
 
-        $message = $status === 'approve' 
-            ? 'Permohonan cuti telah disetujui.' 
-            : 'Permohonan cuti telah ditolak.';
+        // === Update data ===
+        $leaveRequest->update([
+            'status'        => $newStatus,
+            'reviewed_by'   => $user->id,
+            'reviewed_at'   => now(),
+            'reviewer_note' => $note, // ← Sekarang pasti terisi!
+        ]);
 
+        // === Response ===
         return response()->json([
             'success' => true,
-            'message' => $message,
+            'message' => $note, // ← Pesan sesuai yang diisi / otomatis
             'data'    => $leaveRequest->load('employee.user', 'reviewer'),
         ]);
-    }   
+    }
 }
