@@ -33,7 +33,7 @@ class AttendanceController extends Controller
         }
 
         // Jika bukan keduanya → abort
-        abort(422, 'Employee profile not yet available');
+        abort(422, 'Employee profile not available');
     }
 
     /**

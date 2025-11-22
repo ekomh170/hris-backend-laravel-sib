@@ -29,7 +29,7 @@ class LeaveRequestController extends Controller
             return $user->id;
         }
 
-        abort(422, 'Employee profile not yet available');
+        abort(422, 'Employee profile not available');
     }
 
 
@@ -60,7 +60,7 @@ class LeaveRequestController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Pengajuan cuti berhasil dikirim',
+            'message' => 'Leave request submitted successfully',
             'data'    => $leaveRequest->load('employee.user'),
         ], 201);
     }
@@ -271,7 +271,7 @@ class LeaveRequestController extends Controller
 
         // 1. Admin HR tidak boleh review cuti sendiri
         if ($leaveRequest->employee_id === $user->id && $user->isAdminHr()) {
-            abort(403, 'Anda tidak diperbolehkan mereview cuti sendiri. Hanya Manager yang boleh.');
+            abort(403, 'You are not allowed to review your own leave request. Only Manager can review it.');
         }
 
         // 2. Manager hanya boleh review anak buahnya, KECUALI kalau cuti dari Admin HR
@@ -280,7 +280,7 @@ class LeaveRequestController extends Controller
                 abort_unless(
                     $leaveRequest->employee?->manager_id === $user->id,
                     403,
-                    'Anda hanya boleh mereview cuti anggota tim Anda sendiri.'
+                    'You can only review leave requests from your own team members.'
                 );
             }
         }
@@ -298,8 +298,8 @@ class LeaveRequestController extends Controller
         $note = $request->input('reviewer_note');
         if (empty($note)) {
             $note = $newStatus === 'Approved'
-                ? 'Permohonan cuti telah disetujui.'
-                : 'Permohonan cuti telah ditolak.';
+                ? 'Leave request has been approved.'
+                : 'Leave request has been rejected.';
         }
 
         // === Update data ===

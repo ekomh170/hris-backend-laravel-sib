@@ -31,7 +31,7 @@ class PerformanceReviewController extends Controller
 
         // Filter berdasarkan role (otorisasi yang sudah ada)
         if ($user->isEmployee()) {
-            abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
+            abort_if(!$user->employee, 422, 'Employee profile not available');
             $query->where('employee_id', $user->employee->id);
         } elseif ($user->isManager()) {
             $query->where('reviewer_id', $user->id);
@@ -124,7 +124,7 @@ class PerformanceReviewController extends Controller
         // ========== Response yang Ditingkatkan dengan Metadata Filter ==========
         return response()->json([
             'success' => true,
-            'message' => 'Data performance review berhasil diambil',
+            'message' => 'Performance reviews retrieved successfully',
             'data' => [
                 // Info paginasi
                 'current_page'    => $reviews->currentPage(),
@@ -233,12 +233,12 @@ class PerformanceReviewController extends Controller
 
         // 1. Kalau yang dibuat review adalah Admin HR sendiri → DILARANG!
         if ($employeeId == $user->id && $user->isAdminHr()) {
-            abort(403, 'Anda tidak diperbolehkan membuat performance review untuk diri sendiri.');
+            abort(403, 'You are not allowed to create performance review for yourself.');
         }
 
         // 2. Kalau target adalah Admin HR → HANYA Manager yang boleh buat
         if ($isTargetAdminHr) {
-            abort_unless($user->isManager(), 403, 'Hanya Manager yang boleh membuat performance review untuk Admin HR.');
+            abort_unless($user->isManager(), 403, 'Only Manager can create performance review for Admin HR.');
         }
 
         // 3. Kalau bukan Admin HR (karyawan biasa) → Admin HR & Manager boleh buat
@@ -246,7 +246,7 @@ class PerformanceReviewController extends Controller
         if ($user->isManager() && !$isTargetAdminHr) {
             abort_unless(
                 $targetEmployee?->manager_id === $user->id,
-                403, 'Anda hanya boleh membuat review untuk anggota tim Anda sendiri.'
+                403, 'You can only create review for your own team members.'
             );
         }
 
@@ -281,7 +281,7 @@ class PerformanceReviewController extends Controller
 
         // Employee hanya bisa lihat review miliknya
         if ($user->isEmployee()) {
-            abort_if(!$user->employee, 422, 'Profile employee belum tersedia');
+            abort_if(!$user->employee, 422, 'Employee profile not available');
             abort_unless($review->employee_id === $user->employee->id, 403, 'Forbidden');
         }
 
@@ -328,12 +328,12 @@ class PerformanceReviewController extends Controller
 
         // 1. Admin HR TIDAK boleh update review milik dirinya sendiri
         if ($review->employee_id === $user->id && $user->isAdminHr()) {
-            abort(403, 'Anda tidak diperbolehkan mengubah performance review diri sendiri.');
+            abort(403, 'You are not allowed to update your own performance review.');
         }
 
         // 2. Jika ini review untuk Admin HR → HANYA Manager yang boleh update
         if ($isReviewForAdminHr) {
-            abort_unless($user->isManager(), 403, 'Hanya Manager yang boleh mengubah performance review Admin HR.');
+            abort_unless($user->isManager(), 403, 'Only Manager can update Admin HR performance review.');
         }
 
         // 3. Jika bukan review untuk Admin HR (karyawan biasa)
@@ -341,7 +341,7 @@ class PerformanceReviewController extends Controller
         if ($user->isManager() && !$isReviewForAdminHr) {
             abort_unless(
                 $review->reviewer_id === $user->id,
-                403, 'Anda hanya boleh mengubah performance review yang Anda buat sendiri.'
+                403, 'You can only update performance review that you created yourself.'
             );
         }
 
@@ -359,7 +359,7 @@ class PerformanceReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Performance review berhasil diperbarui.',
+            'message' => 'Performance review updated successfully.',
             'data'    => $review->fresh()->load(['employee.user', 'reviewer']),
         ]);
     }
@@ -381,7 +381,7 @@ class PerformanceReviewController extends Controller
 
         // Manager hanya bisa delete review yang dia buat sendiri
         if ($user->isManager()) {
-            abort_unless($review->reviewer_id === $user->id, 403, 'Anda hanya boleh menghapus performance review yang Anda buat sendiri.');
+            abort_unless($review->reviewer_id === $user->id, 403, 'You can only delete performance review that you created yourself.');
         }
 
         // Admin HR bisa delete semua review
