@@ -113,9 +113,9 @@ Route::middleware(['auth:api'])->group(function () {
     Route::put('performance-reviews/{id}', [PerformanceReviewController::class, 'update'])
         ->middleware('role:admin_hr,manager');
 
-    // Hapus review kinerja (Admin HR only)
+    // Hapus review kinerja (Admin HR & Manager only)
     Route::delete('performance-reviews/{id}', [PerformanceReviewController::class, 'destroy'])
-        ->middleware('role:admin_hr');
+        ->middleware('role:admin_hr,manager');
 
     // ========== Salary Slips ==========
     // Slip gaji user yang login

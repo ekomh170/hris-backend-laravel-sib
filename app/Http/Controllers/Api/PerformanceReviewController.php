@@ -365,7 +365,7 @@ class PerformanceReviewController extends Controller
     }
 
     /**
-     * Delete performance review (Admin only)
+     * Delete performance review (Admin/Manager only)
      *
      * @param int $id
      * @return JsonResponse
@@ -375,9 +375,16 @@ class PerformanceReviewController extends Controller
         /** @var User $user */
         $user = Auth::guard('api')->user();
 
-        abort_unless($user->isAdminHr(), 403, 'Forbidden');
+        abort_unless($user->isAdminHr() || $user->isManager(), 403, 'Forbidden');
 
-        $review = PerformanceReview::findOrFail($id);
+        $review = PerformanceReview::with('employee.user')->findOrFail($id);
+
+        // Manager hanya bisa delete review yang dia buat sendiri
+        if ($user->isManager()) {
+            abort_unless($review->reviewer_id === $user->id, 403, 'Anda hanya boleh menghapus performance review yang Anda buat sendiri.');
+        }
+
+        // Admin HR bisa delete semua review
         $review->delete();
 
         return response()->json([
