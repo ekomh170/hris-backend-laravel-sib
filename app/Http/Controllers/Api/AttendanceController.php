@@ -150,6 +150,19 @@ class AttendanceController extends Controller
     /**
      * Get all attendances (Admin HR / Manager only)
      *
+     * Query Parameters:
+     * - search: string (pencarian global nama, email, employee_code, department, position)
+     * - employee_id: integer (filter berdasarkan employee ID)
+     * - month: string (filter berdasarkan bulan, format: YYYY-MM)
+     * - department: string (filter berdasarkan departemen)
+     * - min_work_hour: float (filter jam kerja minimum)
+     * - max_work_hour: float (filter jam kerja maksimum)
+     * - date: string (filter berdasarkan tanggal spesifik, format: YYYY-MM-DD)
+     * - sort_by: string (date|employee_code|work_hour, default: date)
+     * - sort_order: string (asc|desc, default: desc)
+     * - per_page: integer (1-100, default: 10)
+     * - page: integer (default: 1)
+     *
      * @param Request $request
      * @return JsonResponse
      */
@@ -162,17 +175,44 @@ class AttendanceController extends Controller
 
         $query = Attendance::with('employee.user');
 
-        // Filter by employee_id
+        /* =================================
+         * FITUR PENCARIAN & FILTER BARU
+         * ================================= */
+
+        // Pencarian global - mencari di nama, email, employee_code, department, position
+        if ($search = $request->query('search')) {
+            $query->search($search);
+        }
+
+        // Filter by employee_id (existing)
         if ($employeeId = $request->query('employee_id')) {
             $query->where('employee_id', $employeeId);
         }
 
-        // Filter by month
+        // Filter by month (existing)
         if ($yearMonth = $request->query('month')) {
             $query->inMonth($yearMonth);
         }
 
-        // If manager: limit to their team
+        // Filter berdasarkan departemen
+        if ($department = $request->query('department')) {
+            $query->byDepartment($department);
+        }
+
+        // Filter berdasarkan range jam kerja
+        $minWorkHour = $request->query('min_work_hour') ? (float) $request->query('min_work_hour') : null;
+        $maxWorkHour = $request->query('max_work_hour') ? (float) $request->query('max_work_hour') : null;
+
+        if ($minWorkHour !== null || $maxWorkHour !== null) {
+            $query->byWorkHour($minWorkHour, $maxWorkHour);
+        }
+
+        // Filter berdasarkan tanggal spesifik
+        if ($date = $request->query('date')) {
+            $query->whereDate('date', $date);
+        }
+
+        // If manager: limit to their team (existing)
         if ($user->isManager()) {
             $managerId = $user->id;
             $query->whereHas('employee', function ($employeeQuery) use ($managerId) {
@@ -180,9 +220,36 @@ class AttendanceController extends Controller
             });
         }
 
-        // Batasi per_page maksimal 100, default 10
+        /* =================================
+         * SORTING OPTIONS
+         * ================================= */
+
+        // Validasi sort_by parameter
+        $allowedSortBy = ['date', 'employee_code', 'work_hour', 'created_at'];
+        $sortBy = $request->query('sort_by', 'date');
+        $sortBy = in_array($sortBy, $allowedSortBy) ? $sortBy : 'date';
+
+        // Validasi sort_order parameter
+        $sortOrder = $request->query('sort_order', 'desc');
+        $sortOrder = in_array(strtolower($sortOrder), ['asc', 'desc']) ? $sortOrder : 'desc';
+
+        // Apply sorting
+        if ($sortBy === 'employee_code') {
+            $query->join('employees', 'attendances.employee_id', '=', 'employees.id')
+                  ->orderBy('employees.employee_code', $sortOrder)
+                  ->select('attendances.*'); // Avoid column conflicts
+        } else {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
+        // Secondary sort untuk konsistensi
+        if ($sortBy !== 'date') {
+            $query->orderBy('date', 'desc');
+        }
+
+        // Pagination
         $perPage = min($request->query('per_page', 10), 100);
-        $attendances = $query->orderBy('date', 'desc')->paginate($perPage);
+        $attendances = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -208,6 +275,19 @@ class AttendanceController extends Controller
 
                 // Pagination links untuk UI
                 'links'          => $attendances->linkCollection()->toArray(),
+
+                // Filter info untuk frontend
+                'filters' => [
+                    'search' => $request->query('search'),
+                    'employee_id' => $request->query('employee_id'),
+                    'month' => $request->query('month'),
+                    'department' => $request->query('department'),
+                    'min_work_hour' => $minWorkHour,
+                    'max_work_hour' => $maxWorkHour,
+                    'date' => $request->query('date'),
+                    'sort_by' => $sortBy,
+                    'sort_order' => $sortOrder,
+                ],
             ],
         ]);
     }

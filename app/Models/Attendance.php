@@ -65,6 +65,64 @@ class Attendance extends BaseModel
         return $query->whereRaw("DATE_FORMAT(`date`, '%Y-%m') = ?", [$yearMonth]);
     }
 
+    /**
+     * Scope untuk pencarian global absensi
+     * Mencari berdasarkan:
+     * - Nama karyawan
+     * - Email karyawan
+     * - Kode karyawan (employee_code)
+     * - Departemen karyawan
+     * - Posisi karyawan
+     */
+    public function scopeSearch($query, ?string $term)
+    {
+        if (!$term) {
+            return $query;
+        }
+
+        return $query->where(function ($subQuery) use ($term) {
+            $subQuery->whereHas('employee', function ($employeeQuery) use ($term) {
+                $employeeQuery->where('employee_code', 'like', "%{$term}%")
+                    ->orWhere('position', 'like', "%{$term}%")
+                    ->orWhere('department', 'like', "%{$term}%")
+                    ->orWhereHas('user', function ($userQuery) use ($term) {
+                        $userQuery->where('name', 'like', "%{$term}%")
+                            ->orWhere('email', 'like', "%{$term}%");
+                    });
+            });
+        });
+    }
+
+    /**
+     * Scope untuk filter berdasarkan department
+     */
+    public function scopeByDepartment($query, ?string $department)
+    {
+        if (!$department) {
+            return $query;
+        }
+
+        return $query->whereHas('employee', function ($employeeQuery) use ($department) {
+            $employeeQuery->where('department', 'like', "%{$department}%");
+        });
+    }
+
+    /**
+     * Scope untuk filter berdasarkan work hour range
+     */
+    public function scopeByWorkHour($query, ?float $minHours, ?float $maxHours)
+    {
+        if ($minHours !== null) {
+            $query->where('work_hour', '>=', $minHours);
+        }
+
+        if ($maxHours !== null) {
+            $query->where('work_hour', '<=', $maxHours);
+        }
+
+        return $query;
+    }
+
     // ========== Metode Helper ==========
 
     /**
