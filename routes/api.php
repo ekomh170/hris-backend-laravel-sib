@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\DashboardEmployeeController;
 use App\Http\Controllers\Api\LeaveRequestController;
 use App\Http\Controllers\Api\PerformanceReviewController;
 use App\Http\Controllers\Api\SalarySlipController;
@@ -32,6 +33,11 @@ Route::prefix('auth')->group(function () {
 
 // Protected Routes
 Route::middleware(['auth:api'])->group(function () {
+
+    // ========== Dashboard Employee ==========
+    // Dashboard overview untuk employee (Employee only)
+    Route::get('dashboard/employee', [DashboardEmployeeController::class, 'index'])
+        ->middleware('role:employee');
 
     // ========== Employees ==========
     // Get list of managers (Admin HR & Manager only)
@@ -137,7 +143,7 @@ Route::middleware(['auth:api'])->group(function () {
     // Update slip gaji (Admin HR only)
     Route::put('salary-slips/{id}', [SalarySlipController::class, 'update'])
         ->middleware('role:admin_hr');
- 
+
     // Hapus slip gaji (Admin HR only)
     Route::delete('salary-slips/{id}', [SalarySlipController::class, 'destroy'])
         ->middleware('role:admin_hr');
