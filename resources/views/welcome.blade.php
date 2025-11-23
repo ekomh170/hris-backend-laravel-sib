@@ -86,8 +86,8 @@
 
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed">
                     Backend API yang powerful dan scalable untuk mengelola seluruh aspek HR:
-                    <span class="font-semibold text-blue-600">Karyawan, Absensi, Cuti, Slip Gaji, Performance Review, dan Notifikasi</span>
-                    dengan teknologi Laravel terkini.
+                    <span class="font-semibold text-blue-600">Employee Management, Dashboard Analytics, Attendance System, Leave Management, Performance Reviews, Salary Slips, dan Real-time Notifications</span>
+                    dengan teknologi Laravel terkini dan role-based access control.
                 </p>
 
                 <div class="flex flex-wrap justify-center gap-4 mb-12">
@@ -108,11 +108,11 @@
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
                     <div class="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
-                        <div class="text-4xl font-black bg-gradient-to-r from-gray-700 to-blue-500 bg-clip-text text-transparent mb-2">7</div>
+                        <div class="text-4xl font-black bg-gradient-to-r from-gray-700 to-blue-500 bg-clip-text text-transparent mb-2">8</div>
                         <div class="text-sm font-medium text-gray-600">Main Modules</div>
                     </div>
                     <div class="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
-                        <div class="text-4xl font-black bg-gradient-to-r from-blue-500 to-sky-500 bg-clip-text text-transparent mb-2">38</div>
+                        <div class="text-4xl font-black bg-gradient-to-r from-blue-500 to-sky-500 bg-clip-text text-transparent mb-2">44</div>
                         <div class="text-sm font-medium text-gray-600">API Endpoints</div>
                     </div>
                     <div class="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
@@ -142,6 +142,17 @@
 
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <!-- Feature Card 1 -->
+                <div class="card-hover bg-gradient-to-br from-purple-50 to-pink-100 rounded-2xl p-8 border border-purple-200">
+                    <div class="w-14 h-14 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Dashboard Analytics</h3>
+                    <p class="text-gray-600 leading-relaxed">3 role-specific dashboards dengan real-time analytics: Employee (personal overview), Admin HR (organization metrics), dan Manager (team performance)</p>
+                </div>
+
+                <!-- Feature Card 2 -->
                 <div class="card-hover bg-gradient-to-br from-gray-50 to-slate-100 rounded-2xl p-8 border border-gray-200">
                     <div class="w-14 h-14 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl flex items-center justify-center mb-6 shadow-lg">
                         <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,7 +246,7 @@
                         <div class="space-y-4">
                             <div class="flex items-center justify-between">
                                 <span class="font-medium">Framework</span>
-                                <span class="bg-white/20 px-4 py-2 rounded-lg font-bold">Laravel 12.37.0</span>
+                                <span class="bg-white/20 px-4 py-2 rounded-lg font-bold">Laravel 12.0</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="font-medium">PHP Version</span>
@@ -275,7 +286,7 @@
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="font-medium">Total Endpoints</span>
-                                <span class="bg-white/20 px-4 py-2 rounded-lg font-bold">38 Routes</span>
+                                <span class="bg-white/20 px-4 py-2 rounded-lg font-bold">44 Routes</span>
                             </div>
                         </div>
                     </div>
@@ -289,14 +300,20 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
                 <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                    7 Main API Modules
+                    8 Main API Modules
                 </h2>
                 <p class="text-xl text-gray-600">
-                    Complete endpoints untuk semua kebutuhan HR Management
+                    Complete endpoints dengan role-based access untuk semua kebutuhan HR Management
                 </p>
             </div>
 
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="group bg-white rounded-xl p-6 border-2 border-purple-300 hover:border-purple-600 hover:shadow-xl transition-all">
+                    <div class="text-4xl mb-3">📊</div>
+                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Dashboard Analytics</h4>
+                    <p class="text-sm text-gray-600">3 Role-specific Dashboards: Employee, Admin HR, Manager dengan Real-time Analytics</p>
+                </div>
+
                 <div class="group bg-white rounded-xl p-6 border-2 border-gray-300 hover:border-gray-600 hover:shadow-xl transition-all">
                     <div class="text-4xl mb-3">🔐</div>
                     <h4 class="font-bold text-gray-900 mb-2 text-lg">Authentication</h4>
@@ -305,20 +322,8 @@
 
                 <div class="group bg-white rounded-xl p-6 border-2 border-blue-300 hover:border-blue-600 hover:shadow-xl transition-all">
                     <div class="text-4xl mb-3">👥</div>
-                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Employees</h4>
-                    <p class="text-sm text-gray-600">CRUD Karyawan, Profile Management, Role Control</p>
-                </div>
-
-                <div class="group bg-white rounded-xl p-6 border-2 border-sky-300 hover:border-sky-600 hover:shadow-xl transition-all">
-                    <div class="text-4xl mb-3">🏢</div>
-                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Departments</h4>
-                    <p class="text-sm text-gray-600">Department Management, Filter & Search</p>
-                </div>
-
-                <div class="group bg-white rounded-xl p-6 border-2 border-cyan-300 hover:border-cyan-600 hover:shadow-xl transition-all">
-                    <div class="text-4xl mb-3">💼</div>
-                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Positions</h4>
-                    <p class="text-sm text-gray-600">Job Positions, Level & Hierarchy</p>
+                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Employee Management</h4>
+                    <p class="text-sm text-gray-600">CRUD Karyawan, Manager List, Profile Management, Role-based Access Control</p>
                 </div>
 
                 <div class="group bg-white rounded-xl p-6 border-2 border-blue-300 hover:border-blue-600 hover:shadow-xl transition-all">
@@ -341,8 +346,14 @@
 
                 <div class="group bg-white rounded-xl p-6 border-2 border-slate-300 hover:border-slate-600 hover:shadow-xl transition-all">
                     <div class="text-4xl mb-3">⭐</div>
-                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Performance</h4>
-                    <p class="text-sm text-gray-600">1-10 Star Rating, Feedback & Reviews</p>
+                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Performance Reviews</h4>
+                    <p class="text-sm text-gray-600">1-10 Star Rating System, Structured Feedback, Progress Tracking</p>
+                </div>
+
+                <div class="group bg-white rounded-xl p-6 border-2 border-indigo-300 hover:border-indigo-600 hover:shadow-xl transition-all">
+                    <div class="text-4xl mb-3">🔔</div>
+                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Notifications</h4>
+                    <p class="text-sm text-gray-600">Personal Messages, Broadcast Announcements, Read/Unread Tracking</p>
                 </div>
             </div>
         </div>
