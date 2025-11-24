@@ -138,7 +138,7 @@ Route::middleware(['auth:api'])->group(function () {
     // ========== Salary Slips ==========
     // Slip gaji user yang login
     Route::get('salary-slips/me', [SalarySlipController::class, 'me'])
-        ->middleware('role:employee');
+        ->middleware('role:employee,admin_hr');
 
     // List semua slip gaji (admin HR only)
     Route::get('salary-slips', [SalarySlipController::class, 'index'])

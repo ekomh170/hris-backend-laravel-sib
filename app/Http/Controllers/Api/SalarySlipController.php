@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SalarySlipResource;
 use App\Models\SalarySlip;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -82,35 +83,110 @@ class SalarySlipController extends Controller
     }
 
     /**
-     * Get my salary slips (employee)
+     * Get my salary slips → HANYA 1 PARAMETER: period
      *
-     * @param Request $request
-     * @return JsonResponse
-     */
+     * ?period=2025        → semua slip tahun 2025
+     * ?period=2025-11     → hanya November 2025
+    */
     public function me(Request $request): JsonResponse
     {
         /** @var User $user */
         $user = Auth::guard('api')->user();
-        $employee = $user->employee;
 
-        abort_if(!$employee, 422, 'Employee profile not available');
+        // Support employee biasa & Admin HR (yang mungkin tidak punya record employee)
+        $employeeId = $user->employee?->id ?? ($user->isAdminHr() ? $user->id : null);
+        abort_if(is_null($employeeId), 422, 'Employee profile not available');
 
-        $query = SalarySlip::ofEmployee($employee->id)
-            ->with(['employee.user', 'creator']);
+        $query = SalarySlip::where('employee_id', $employeeId)
+            ->with(['employee.user', 'creator'])
+            ->orderBy('period_month', 'desc');
 
-        // Filter berdasarkan periode (opsional)
-        if ($period = $request->query('period')) {
-            $query->where('period_month', 'like', "%{$period}%");
+        $periodInput = $request->query('period');
+        $appliedPeriod = null;
+        $message = 'You have no salary slips yet.';
+
+        if ($periodInput) {
+            // CASE 1: Hanya tahun (contoh: 2025)
+            if (preg_match('/^\d{4}$/', $periodInput)) {
+                $query->where('period_month', 'LIKE', $periodInput . '%');
+                $appliedPeriod = $periodInput;
+                $message = "No salary slips found for period {$periodInput}.";
+            }
+            // CASE 2: Tahun + bulan atau quarter (contoh: 2025-11, 2025-Q1, 2025-06, dll)
+            elseif (preg_match('/^\d{4}[-\/](Q[1-4]|[0-1]?\d)$/', $periodInput)) {
+                $query->where('period_month', $periodInput); // exact match
+                $appliedPeriod = $periodInput;
+
+                // Format pesan lebih cantik
+                if (str_contains($periodInput, '-Q')) {
+                    $message = "No salary slips found for period {$periodInput}.";
+                } else {
+                    $nice = Carbon::createFromFormat('Y-m', $periodInput)->format('F Y');
+                    $message = "No salary slips found for period {$nice}.";
+                }
+            }
+            else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid period format. Use YYYY or YYYY-MM (e.g., 2025 or 2025-11)'
+                ], 400);
+            }
         }
 
-        $slips = $query->orderBy('period_month', 'desc')
-                      ->orderBy('created_at', 'desc')
-                      ->get();
+        // Cek apakah ada data
+        $total = $query->count();
+
+        if ($total === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'current_page'   => 1,
+                    'per_page'       => (int)$request->query('per_page', 10),
+                    'total'          => 0,
+                    'last_page'      => 1,
+                    'from'           => null,
+                    'to'             => null,
+                    'data'           => [],
+                    'first_page_url' => $request->fullUrlWithQuery(['page' => 1]),
+                    'last_page_url'  => $request->fullUrlWithQuery(['page' => 1]),
+                    'next_page_url'  => null,
+                    'prev_page_url'     => null,
+                    'links'          => [],
+                    'filters' => [
+                        'period'   => $periodInput,
+                        'per_page' => (int)$request->query('per_page', 10),
+                    ],
+                ]
+            ]);
+        }
+
+        // Pagination
+        $perPage = min((int)$request->query('per_page', 10), 50);
+        $slips = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'message' => 'My salary slips retrieved successfully',
-            'data' => SalarySlipResource::collection($slips),
+            'message' => 'Your salary slips retrieved successfully',
+            'data' => [
+                'current_page'       => $slips->currentPage(),
+                'per_page'       => $slips->perPage(),
+                'total'          => $slips->total(),
+                'last_page'      => $slips->lastPage(),
+                'from'           => $slips->firstItem(),
+                'to'             => $slips->lastItem(),
+                'data'           => SalarySlipResource::collection($slips->getCollection()),
+                'first_page_url' => $slips->url(1),
+                'last_page_url'  => $slips->url($slips->lastPage()),
+                'next_page_url'  => $slips->nextPageUrl(),
+                'prev_page_url'  => $slips->previousPageUrl(),
+                'path'           => $slips->path(),
+                'links'          => $slips->linkCollection()->toArray(),
+                'filters' => [
+                    'period'   => $periodInput,
+                    'per_page' => $perPage,
+                ],
+            ]
         ]);
     }
 
