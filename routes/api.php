@@ -39,7 +39,7 @@ Route::middleware(['auth:api'])->group(function () {
     // ========== Dashboard Employee ==========
     // Dashboard overview untuk employee (Admin HR, Employee)
     Route::get('dashboard/employee', [DashboardEmployeeController::class, 'index'])
-        ->middleware('role:admin_hr, employee');
+        ->middleware('role:admin_hr,employee');
 
     // ========== Dashboard Admin HR ==========
     // Dashboard overview untuk admin HR (Admin HR only)

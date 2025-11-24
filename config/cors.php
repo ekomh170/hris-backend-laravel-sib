@@ -21,11 +21,12 @@ return [
 
     'allowed_origins' => [
         'http://localhost:3000',     // React development server
-        'http://localhost:5173',     // Vite development server  
+        'http://localhost:5173',     // Vite development server
         'http://127.0.0.1:3000',     // Alternative localhost
         'http://127.0.0.1:5173',     // Alternative localhost
         'http://localhost:8080',     // Vue CLI development server
-        'https://your-frontend-domain.com', // Production frontend domain
+        'https://kelompokfwd7-sibm3.karyakreasi.id', // Production frontend domain
+        'https://backend-kelompokfwd7-sibm3.karyakreasi.id' // Production backend domain
     ],
 
     'allowed_origins_patterns' => [
@@ -36,7 +37,7 @@ return [
 
     'allowed_headers' => [
         'Content-Type',
-        'Authorization', 
+        'Authorization',
         'X-Requested-With',
         'Accept',
         'Origin',
