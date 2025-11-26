@@ -38,14 +38,14 @@ class ProfileController extends Controller
             ], 404);
         }
 
-        // HANYA load relasi manager JIKA role-nya employee
-        if ($role === 'employee') {
+        // HANYA load relasi manager JIKA role-nya employee dan admin_hr
+       if ($role === 'manager') {
+            $user->loadMissing('employee'); // cukup employee saja
+        } else {
+            // employee & admin_hr → load manager-nya
             $user->loadMissing([
                 'employee.manager' => fn ($query) => $query->select('id', 'name')
             ]);
-        } else {
-            // Manager & Admin HR → cukup load employee saja (tanpa manager)
-            $user->loadMissing('employee');
         }
 
         return response()->json([
