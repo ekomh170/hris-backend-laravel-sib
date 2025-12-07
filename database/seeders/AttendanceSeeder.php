@@ -41,16 +41,16 @@ class AttendanceSeeder extends Seeder
         ];
 
         foreach ($employees as $employee) {
-            // Employee behavior patterns (some are more punctual than others)
-            $punctualityLevel = rand(1, 3); // 1=very punctual, 2=normal, 3=often late
-            $overtimeFrequency = rand(1, 4); // 1=never, 2=rarely, 3=sometimes, 4=often
+            // Pola perilaku karyawan (ada yang lebih disiplin, ada yang sering terlambat)
+            $punctualityLevel = rand(1, 3); // 1=sangat tepat waktu, 2=normal, 3=sering terlambat
+            $overtimeFrequency = rand(1, 4); // 1=tidak pernah lembur, 2=jarang, 3=kadang-kadang, 4=sering
 
             foreach ($months as $monthData) {
                 $daysInMonth = Carbon::create($monthData['year'], $monthData['month'])->daysInMonth;
 
-                // Batasi hanya tanggal 1-3 untuk bulan Desember
+                // Batasi data absensi Desember hanya untuk tanggal 1-5 (hari kerja awal bulan)
                 if ($monthData['month'] == 12) {
-                    $daysInMonth = 3;
+                    $daysInMonth = 5;
                 }
 
                 // Penyesuaian perilaku bulanan
