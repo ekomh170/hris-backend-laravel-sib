@@ -18,7 +18,10 @@ class EmployeeResource extends JsonResource
             'id' => $this->id,
             'employee_code' => $this->employee_code,
             'position' => $this->position,
-            'department' => $this->department,
+            'department' => [
+                'id' => $this->department?->id,
+                'name' => $this->department?->name,
+            ],
             'join_date' => $this->join_date?->format('Y-m-d'),
             'employment_status' => $this->employment_status,
             'contact' => $this->contact,
@@ -30,17 +33,6 @@ class EmployeeResource extends JsonResource
                 'email' => $this->user?->email,
                 'role' => $this->user?->role,
                 'status_active' => $this->user?->status_active,
-            ],
-
-            // Relasi manager (always present with consistent structure)
-            'manager' => $this->manager ? [
-                'id' => $this->manager->id,
-                'name' => $this->manager->name,
-                'email' => $this->manager->email,
-            ] : [
-                'id' => null,
-                'name' => null,
-                'email' => null,
             ],
         ];
     }

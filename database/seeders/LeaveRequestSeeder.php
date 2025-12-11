@@ -27,10 +27,12 @@ class LeaveRequestSeeder extends Seeder
             $query->where('role', 'employee');
         })->get();
 
-        $manager = User::where('role', 'manager')->first();
+        // Ambil salah satu manager untuk jadi reviewer
+        $manager = User::where('role', 'manager')->first() 
+                ?? User::where('email', 'admin@hris.com')->first();
 
         if ($employees->isEmpty()) {
-            $this->command->error('❌ No employees found! Please run EmployeeSeeder first.');
+            $this->command->warn('No employees found! Please run EmployeeSeeder first.');
             return;
         }
 

@@ -16,14 +16,13 @@ return new class extends Migration
             $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
             $table->string('employee_code')->unique();
             $table->string('position');
-            $table->string('department')->index();
+            $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete();
             $table->date('join_date')->index();
             $table->enum('employment_status', ['permanent', 'contract', 'intern', 'resigned'])->index();
             $table->string('contact')->nullable();
-            $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
-            $table->index(['manager_id', 'department']);
+            // $table->index(['manager_id', 'department']);
         });
     }
 

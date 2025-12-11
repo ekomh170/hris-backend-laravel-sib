@@ -96,7 +96,18 @@ class PerformanceReviewSeeder extends Seeder
 
         foreach ($employees as $employee) {
             // Get the manager for this employee's department
-            $managerId = $departmentManagers[$employee->department] ?? $managers[0]->id;
+            $deptName = $employee->department?->name ?? 'Unknown';
+
+            // Mapping manual (bisa diambil dari DepartmentSeeder)
+            $departmentManagers = [
+                'Human Resources' => User::where('email', 'admin@hris.com')->first()->id,
+                'IT'              => User::where('email', 'manager@hris.com')->first()->id,
+                'Marketing'       => User::where('email', 'yossy.manager@hris.com')->first()->id,
+                'Finance'         => User::where('email', 'dina.manager@hris.com')->first()->id,
+                'Operations'      => User::where('email', 'ahmad.manager@hris.com')->first()->id,
+            ];
+
+            $managerId = $departmentManagers[$deptName] ?? $managers[0]->id;
 
             // Employee performance trend (some improve, some decline, some stable)
             $performanceTrend = rand(1, 3); // 1=improving, 2=stable, 3=declining

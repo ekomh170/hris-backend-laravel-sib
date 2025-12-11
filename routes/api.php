@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PerformanceReviewController;
 use App\Http\Controllers\Api\SalarySlipController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\DepartmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,6 +57,27 @@ Route::middleware(['auth:api'])->group(function () {
     // Dashboard overview untuk manager (Manager only)
     Route::get('dashboard/manager', [DashboardManagerController::class, 'index'])
         ->middleware('role:manager');
+
+    // ========== Departments (Admin HR only) ==========
+    // List semua departemen
+    Route::get('departments', [DepartmentController::class, 'index'])
+        ->middleware('role:admin_hr');
+
+    // Tambah departemen baru (Admin HR only)
+    Route::post('departments', [DepartmentController::class, 'store'])
+        ->middleware('role:admin_hr');
+
+    // Detail departemen by ID (Admin HR only)
+    Route::get('departments/{id}', [DepartmentController::class, 'show'])
+        ->middleware('role:admin_hr');
+
+    // Update departemen (Admin HR only)
+    Route::put('departments/{id}', [DepartmentController::class, 'update'])
+        ->middleware('role:admin_hr');
+
+    // Hapus departemen (Admin HR only)
+    Route::delete('departments/{id}', [DepartmentController::class, 'destroy'])
+        ->middleware('role:admin_hr');
 
     // ========== Employees ==========
     // Get list of managers (Admin HR & Manager only)

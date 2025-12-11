@@ -112,6 +112,15 @@ class User extends Authenticatable implements JWTSubject
     }
 
     /**
+     * Relasi 1:1 dengan Department (sebagai manager)
+     * Satu user mengelola satu departemen
+     */
+    public function managedDepartment()
+    {
+        return $this->hasOne(Department::class, 'manager_id');
+    }
+
+    /**
      * Relasi 1:N dengan LeaveRequest (sebagai reviewer)
      * User yang mereview banyak pengajuan cuti
      */

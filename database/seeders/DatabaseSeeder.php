@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
         // Jalankan seeder sesuai urutan dependency
         $this->call([
             UserSeeder::class,
+            DepartmentSeeder::class,
             EmployeeSeeder::class,
             AttendanceSeeder::class,
             LeaveRequestSeeder::class,

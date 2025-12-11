@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\EmployeeResource;
+use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -43,7 +44,6 @@ class EmployeeController extends Controller
      * - department: string (filter berdasarkan departemen)
      * - employment_status: enum (permanent|contract|intern|resigned)
      * - position: string (filter berdasarkan posisi/jabatan)
-     * - manager_id: integer (filter berdasarkan manager)
      * - sort_by: enum (name|employee_code|position|department|join_date)
      * - sort_order: enum (asc|desc)
      * - per_page: integer (1-100, default: 15)
@@ -66,11 +66,12 @@ class EmployeeController extends Controller
         // Cek otorisasi - hanya Admin HR dan Manager yang bisa akses
         if ($user->isAdminHr()) {
             // Admin HR dapat melihat semua karyawan
-            $query = Employee::with(['user', 'manager']);
+            $query = Employee::with(['user', 'department']);
         } elseif ($user->isManager()) {
-            // Manager hanya bisa melihat karyawan yang dibawahi
-            $query = Employee::with(['user', 'manager'])
-                ->managedBy($user->id);
+            // Manager hanya bisa melihat karyawan berdasarkan department manager
+            $departmentIds = Department::where('manager_id', $user->id)->pluck('id');
+            $query = Employee::with(['user', 'department'])
+                ->whereIn('department_id', $departmentIds);
         } else {
             // Karyawan biasa tidak bisa akses daftar karyawan
             return response()->json([
@@ -90,7 +91,9 @@ class EmployeeController extends Controller
 
         // Filter berdasarkan departemen (tidak sensitif huruf besar/kecil dengan pencocokan sebagian)
         if ($department = $request->query('department')) {
-            $query->where('department', 'like', "%{$department}%");
+            $query->whereHas('department', function ($q) use ($department) {
+                $q->where('name', 'like', "%{$department}%");
+            });
         }
 
         // Filter berdasarkan status kerja (pencocokan persis)
@@ -102,11 +105,6 @@ class EmployeeController extends Controller
         // Filter berdasarkan posisi/jabatan (tidak sensitif huruf besar/kecil dengan pencocokan sebagian)
         if ($position = $request->query('position')) {
             $query->where('position', 'like', "%{$position}%");
-        }
-
-        // Filter berdasarkan manager (pencocokan persis dengan manager user_id)
-        if ($managerId = $request->query('manager_id')) {
-            $query->where('manager_id', $managerId);
         }
 
         /* =================================
@@ -182,7 +180,7 @@ class EmployeeController extends Controller
      *
      * Authorization Rules:
      * - Admin HR: Dapat melihat detail semua employee
-     * - Manager: Hanya employee yang di-manage (manager_id == user_id)
+     * - Manager: Hanya employee yang ada di departemen yang dikelola
      * - Employee: Hanya data diri sendiri (employee.user_id == user_id)
      *
      * @param string $id Employee ID yang akan ditampilkan
@@ -196,7 +194,7 @@ class EmployeeController extends Controller
         $user = Auth::guard('api')->user();
 
         // Cari karyawan dengan eager loading relasi, lempar 404 jika tidak ada
-        $employee = Employee::with(['user', 'manager'])->findOrFail($id);
+        $employee = Employee::with(['user', 'department'])->findOrFail($id);
 
         /* =================================
          * CEK OTORISASI
@@ -204,13 +202,12 @@ class EmployeeController extends Controller
 
         // Otorisasi bertingkat:
         // 1. Admin HR - akses penuh
-        // 2. Manager - hanya karyawan yang dibawahi
+        // 2. Manager - hanya karyawan di departemen yang dikelola
         // 3. Employee - hanya data diri sendiri
         if ($user->isAdminHr() ||
-            ($user->isManager() && $employee->manager_id == $user->id) ||
-            ($user->id == $employee->user_id)) {
+            ($user->isManager() && $user->id === Department::find($employee->department_id)?->manager_id) ||
+            ($user->isEmployee() && $user->id === $employee->user_id)) {
 
-            // Kembalikan detail karyawan dengan transformasi resource
             return response()->json([
                 'success' => true,
                 'message' => 'Employee details retrieved successfully',
@@ -230,12 +227,12 @@ class EmployeeController extends Controller
      *
      * DUAL MODE OPERATION:
      * Mode 1 - Create User Baru + Employee:
-     *   Required: name, email, password, role, position, department, join_date, employment_status
-     *   Optional: employee_code (auto-generate jika kosong), contact, manager_id
+     *   Required: name, email, password, role, position, department_id, join_date, employment_status
+     *   Optional: employee_code (auto-generate jika kosong), contact
      *
      * Mode 2 - Gunakan Existing User:
-     *   Required: user_id, position, department, join_date, employment_status
-     *   Optional: employee_code (auto-generate jika kosong), contact, manager_id
+     *   Required: user_id, position, department_id, join_date, employment_status
+     *   Optional: employee_code (auto-generate jika kosong), contact
      *
      * Validation Rules:
      * - employee_code: unique, string (nullable - auto-generate format HR-XX jika kosong)
@@ -243,7 +240,6 @@ class EmployeeController extends Controller
      * - user_id: unique di tabel employees (1 user = 1 employee max)
      * - role: enum (employee|manager|admin_hr)
      * - employment_status: enum (permanent|contract|intern|resigned)
-     * - manager_id: must exist in users table
      *
      * Auto-Generate Employee Code:
      * - Format: HR-01, HR-02, HR-03, dst
@@ -272,21 +268,18 @@ class EmployeeController extends Controller
             'name' => 'required_without:user_id|string|max:255',
             'email' => 'required_without:user_id|email|unique:users,email', // Email harus unik
             'password' => 'required_without:user_id|string|min:6',
-            'role' => 'required_without:user_id|in:employee,manager,admin_hr', // Tambah peran admin_hr
+            'role' => 'required_without:user_id|in:employee,manager,admin_hr',
 
             /* --- MODE 2: GUNAKAN USER YANG SUDAH ADA --- */
-            // Wajib jika name tidak ada (mode user yang sudah ada)
-            // user_id harus unik di employees (1 user = 1 karyawan maksimal)
             'user_id' => 'required_without:name|exists:users,id|unique:employees,user_id',
 
             /* --- DATA KARYAWAN (KEDUA MODE) --- */
-            'employee_code' => 'nullable|string|max:50|unique:employees,employee_code', // Opsional - akan auto-generate jika kosong, menghapus batasan alpha_num
+            'employee_code' => 'nullable|string|max:50|unique:employees,employee_code',
             'position' => 'required|string',
-            'department' => 'required|string',
+            'department_id' => 'required|exists:departments,id',
             'join_date' => 'required|date',
-            'employment_status' => 'required|in:permanent,contract,intern,resigned', // Nilai enum
-            'contact' => 'nullable|string', // Opsional
-            'manager_id' => 'nullable|exists:users,id', // Harus ada jika diberikan
+            'employment_status' => 'required|in:permanent,contract,intern,resigned',
+            'contact' => 'nullable|string',
         ]);
 
         /* =================================
@@ -318,21 +311,20 @@ class EmployeeController extends Controller
 
             /* --- LANGKAH 3: BUAT PROFIL KARYAWAN --- */
             $employeeData = [
-                'user_id' => $userId, // Link ke user (yang sudah ada atau baru dibuat)
-                'employee_code' => $employeeCode, // Constraint UNIQUE (auto-generated atau manual)
+                'user_id' => $userId,
+                'employee_code' => $employeeCode,
                 'position' => $data['position'],
-                'department' => $data['department'],
+                'department_id' => $data['department_id'],
                 'join_date' => $data['join_date'],
                 'employment_status' => $data['employment_status'],
-                'contact' => $data['contact'] ?? null, // Field nullable
-                'manager_id' => $data['manager_id'] ?? null, // Foreign key ke users
+                'contact' => $data['contact'] ?? null,
             ];
 
             // Insert record karyawan
             $employee = Employee::create($employeeData);
 
             // Eager load relasi untuk response
-            $employee->load(['user', 'manager']);
+            $employee->load(['user', 'department']);
 
             /* --- LANGKAH 4: COMMIT TRANSAKSI --- */
             DB::commit();
@@ -376,7 +368,6 @@ class EmployeeController extends Controller
      * - join_date: valid date
      * - employment_status: enum (permanent|contract|intern|resigned)
      * - contact: string, nullable
-     * - manager_id: exists in users, nullable
      *
      * Database Transaction: Semua update di-wrap dalam transaction
      * Authorization: Hanya Admin HR yang bisa update employee
@@ -402,18 +393,17 @@ class EmployeeController extends Controller
             /* --- DATA USER (UPDATE OPSIONAL) --- */
             'name' => 'sometimes|string|max:255', // Field opsional
             'email' => "sometimes|email|unique:users,email,{$employee->user_id}", // Kecualikan user saat ini dari pengecekan unik
-            'password' => 'sometimes|nullable|string|min:6', // Nullable dan akan di-hash jika diberikan
-            'role' => 'sometimes|in:employee,manager,admin_hr', // Opsi peran yang diperluas
-            'status_active' => 'sometimes|boolean', // Untuk mengaktifkan/menonaktifkan user
+            'password' => 'sometimes|nullable|string|min:6',
+            'role' => 'sometimes|in:employee,manager,admin_hr',
+            'status_active' => 'sometimes|boolean',
 
             /* --- DATA KARYAWAN (UPDATE OPSIONAL) --- */
-            'employee_code' => "sometimes|string|max:50|unique:employees,employee_code,{$employee->id}", // Kecualikan karyawan saat ini, menghapus batasan alpha_num
+            'employee_code' => "sometimes|string|max:50|unique:employees,employee_code,{$employee->id}",
             'position' => 'sometimes|string',
-            'department' => 'sometimes|string',
+            'department_id' => 'sometimes|exists:departments,id',
             'join_date' => 'sometimes|date',
             'employment_status' => 'sometimes|in:permanent,contract,intern,resigned',
-            'contact' => 'nullable|string', // Bisa diset ke null
-            'manager_id' => 'nullable|exists:users,id', // Bisa diset ke null atau user_id yang valid
+            'contact' => 'nullable|string',
         ]);
 
         /* =================================
@@ -449,8 +439,7 @@ class EmployeeController extends Controller
             if (isset($data['department'])) $employeeUpdateData['department'] = $data['department'];
             if (isset($data['join_date'])) $employeeUpdateData['join_date'] = $data['join_date'];
             if (isset($data['employment_status'])) $employeeUpdateData['employment_status'] = $data['employment_status'];
-            if (isset($data['contact'])) $employeeUpdateData['contact'] = $data['contact']; // Bisa null
-            if (isset($data['manager_id'])) $employeeUpdateData['manager_id'] = $data['manager_id']; // Bisa null
+            if (isset($data['contact'])) $employeeUpdateData['contact'] = $data['contact'];
 
             // Update record karyawan jika ada data yang berubah
             if (!empty($employeeUpdateData)) {
@@ -459,7 +448,7 @@ class EmployeeController extends Controller
 
             /* --- LANGKAH 3: REFRESH RELASI & COMMIT --- */
             // Reload relasi untuk response terbaru
-            $employee->load(['user', 'manager']);
+            $employee->load(['user', 'department']);
 
             DB::commit();
 
