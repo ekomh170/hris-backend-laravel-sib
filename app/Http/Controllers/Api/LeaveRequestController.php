@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class LeaveRequestController extends Controller
 {
@@ -49,21 +50,137 @@ class LeaveRequestController extends Controller
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
             'reason'     => 'nullable|string|max:1000',
+            'foto_cuti'  => 'nullable|file|mimes:jpg,jpeg,png|max:5120', // Max 5MB
         ]);
+
+        $fotoFileName = null;
+        if ($request->hasFile('foto_cuti')) {
+            $file = $request->file('foto_cuti');
+            $fotoFileName = $file->store('foto_cuti', 'public');
+        }
 
         $leaveRequest = LeaveRequest::create([
             'employee_id' => $employeeId,
             'start_date'  => $data['start_date'],
             'end_date'    => $data['end_date'],
             'reason'      => $data['reason'],
-            'status'      => LeaveStatus::PENDING->value, // Konsisten pakai enum
+            'foto_cuti'   => $fotoFileName ? basename($fotoFileName) : null,
+            'status'      => LeaveStatus::PENDING->value,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Leave request submitted successfully',
-            'data'    => $leaveRequest->load('employee.user'),
+            'data'    => new LeaveRequestResource($leaveRequest->load('employee.user')),
         ], 201);
+    }
+
+    /**
+     * Update leave request
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $employeeId = $this->resolveEmployeeId();
+        $leaveRequest = LeaveRequest::findOrFail($id);
+
+        /** @var User $user */
+        $user = Auth::guard('api')->user();
+
+        // Authorization check: hanya employee sendiri atau admin HR yang boleh update
+        $isOwnLeaveRequest = $leaveRequest->employee_id === $employeeId;
+        $isAdminHr = $user->isAdminHr();
+
+        abort_if(
+            !$isOwnLeaveRequest && !$isAdminHr,
+            403,
+            'You can only update your own leave request'
+        );
+
+        // Hanya bisa update jika status masih PENDING
+        abort_if(
+            $leaveRequest->status !== LeaveStatus::PENDING,
+            422,
+            'Cannot update leave request that has already been reviewed'
+        );
+
+        $data = $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date',
+            'reason'     => 'nullable|string|max:1000',
+            'foto_cuti'  => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+        ]);
+
+        // Handle file update: delete old file jika ada file baru
+        if ($request->hasFile('foto_cuti')) {
+            // Delete old file if exists
+            if ($leaveRequest->foto_cuti && Storage::disk('public')->exists('foto_cuti/' . $leaveRequest->foto_cuti)) {
+                Storage::disk('public')->delete('foto_cuti/' . $leaveRequest->foto_cuti);
+            }
+
+            // Store new file
+            $file = $request->file('foto_cuti');
+            $fotoFileName = $file->store('foto_cuti', 'public');
+            $data['foto_cuti'] = basename($fotoFileName);
+        } else {
+            // Remove foto_cuti from data if not provided
+            unset($data['foto_cuti']);
+        }
+
+        $leaveRequest->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Leave request updated successfully',
+            'data'    => $leaveRequest->load('employee.user'),
+        ]);
+    }
+
+    /**
+     * Delete leave request
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $employeeId = $this->resolveEmployeeId();
+        $leaveRequest = LeaveRequest::findOrFail($id);
+
+        /** @var User $user */
+        $user = Auth::guard('api')->user();
+
+        // Authorization check: hanya employee sendiri atau admin HR yang boleh delete
+        $isOwnLeaveRequest = $leaveRequest->employee_id === $employeeId;
+        $isAdminHr = $user->isAdminHr();
+
+        abort_if(
+            !$isOwnLeaveRequest && !$isAdminHr,
+            403,
+            'You can only delete your own leave request'
+        );
+
+        // Hanya bisa delete jika status masih PENDING
+        abort_if(
+            $leaveRequest->status !== LeaveStatus::PENDING,
+            422,
+            'Cannot delete leave request that has already been reviewed'
+        );
+
+        // Delete foto_cuti file if exists
+        if ($leaveRequest->foto_cuti && Storage::disk('public')->exists('foto_cuti/' . $leaveRequest->foto_cuti)) {
+            Storage::disk('public')->delete('foto_cuti/' . $leaveRequest->foto_cuti);
+        }
+
+        $leaveRequest->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Leave request deleted successfully',
+        ]);
     }
 
     /**
@@ -429,5 +546,15 @@ class LeaveRequestController extends Controller
             'message' => $note, // ← Pesan sesuai yang diisi / otomatis
             'data'    => $leaveRequest->load('employee.user', 'reviewer'),
         ]);
+    }
+
+    /**
+     * Helper: Delete file foto_cuti
+     */
+    private function deleteFotoCutiFile(?string $fileName): void
+    {
+        if ($fileName && Storage::disk('public')->exists('foto_cuti/' . $fileName)) {
+            Storage::disk('public')->delete('foto_cuti/' . $fileName);
+        }
     }
 }

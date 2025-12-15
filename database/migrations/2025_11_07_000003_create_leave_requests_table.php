@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('status', ['Pending', 'Approved', 'Rejected'])->default('Pending')->index();
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('reviewer_note')->nullable();
+            $table->string('foto_cuti')->nullable();
             $table->timestamps();
 
             $table->index(['employee_id', 'start_date', 'end_date']);

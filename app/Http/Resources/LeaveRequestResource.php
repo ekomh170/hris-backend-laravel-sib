@@ -30,6 +30,7 @@ class LeaveRequestResource extends JsonResource
             'end_date'        => $this->end_date,
             'reason'          => $this->reason,
             'status'          => $this->status,
+            'foto_cuti'       => $this->foto_cuti ? asset('storage/foto_cuti/' . $this->foto_cuti) : null,
             'reviewed_at'     => $this->reviewed_at?->format('Y-m-d H:i:s'),
             'reviewer_note'   => $this->reviewer_note,
             'reviewer'        => $this->whenLoaded('reviewer', fn() => [

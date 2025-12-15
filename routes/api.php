@@ -134,6 +134,14 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('leave-requests', [LeaveRequestController::class, 'index'])
         ->middleware('role:admin_hr,manager');
 
+    // Update permohonan cuti (employee atau admin HR only)
+    Route::put('leave-requests/{id}', [LeaveRequestController::class, 'update'])
+        ->middleware('role:employee,admin_hr');
+
+    // Hapus permohonan cuti (employee atau admin HR only)
+    Route::delete('leave-requests/{id}', [LeaveRequestController::class, 'destroy'])
+        ->middleware('role:employee,admin_hr');
+
     // Review (approve/reject) permohonan cuti (Admin HR & Manager only)
     Route::patch('leave-requests/{id}/review', [LeaveRequestController::class, 'review'])
     ->middleware('role:admin_hr,manager');

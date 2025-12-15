@@ -24,6 +24,7 @@ class LeaveRequest extends BaseModel
         'status',
         'reviewed_by',
         'reviewer_note',
+        'foto_cuti'
     ];
 
     /**
