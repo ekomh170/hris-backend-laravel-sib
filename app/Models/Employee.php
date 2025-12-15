@@ -103,8 +103,10 @@ class Employee extends BaseModel
         return $query->where(function ($subQuery) use ($term) {
             $subQuery->where('employee_code', 'like', "%{$term}%")
                      ->orWhere('position', 'like', "%{$term}%")
+                     ->orWhere('contact', 'like', "%{$term}%")
                      ->orWhereHas('department', function ($deptQuery) use ($term) {
-                         $deptQuery->where('name', 'like', "%{$term}%");
+                         $deptQuery->where('name', 'like', "%{$term}%")
+                                   ->orWhere('description', 'like', "%{$term}%");
                      })
                      ->orWhereHas('user', function ($userQuery) use ($term) {
                          $userQuery->where('name', 'like', "%{$term}%")

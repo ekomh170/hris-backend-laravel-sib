@@ -159,6 +159,10 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('performance-reviews/me', [PerformanceReviewController::class, 'me'])
         ->middleware('role:admin_hr,employee');
 
+    // Review kinerja berdasarkan employee tertentu (dengan statistik & chart)
+    Route::get('performance-reviews/employee/{employee_id}', [PerformanceReviewController::class, 'showByEmployee'])
+        ->middleware('role:admin_hr,manager,employee');
+
     // Detail review kinerja by ID
     Route::get('performance-reviews/{id}', [PerformanceReviewController::class, 'show'])
         ->middleware('role:admin_hr,manager,employee');

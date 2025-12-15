@@ -173,7 +173,7 @@ class PerformanceReviewController extends Controller
      * @param Request $request
      * @return JsonResponse
      * * Query Parameters:
-     * - period: 
+     * - period:
      *     • YYYY     → semua review di tahun itu
      *     • YYYY-MM  → semua review di tahun-bulan itu
      * - per_page: 5|10|20|50 (default: 10)
@@ -458,6 +458,146 @@ class PerformanceReviewController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Performance review deleted successfully',
+        ]);
+    }
+
+    /**
+     * Get performance reviews by specific employee
+     * Menampilkan seluruh performance review dari satu karyawan tertentu
+     * Lengkap dengan statistik, chart data, dan informasi department
+     *
+     * Authorization:
+     * - Admin HR: Bisa lihat semua employee
+     * - Manager: Bisa lihat employee yang pernah di-review
+     * - Employee: Hanya bisa lihat diri sendiri (redirect ke /me)
+     *
+     * @param Request $request
+     * @param int $employeeId
+     * @return JsonResponse
+     */
+    public function showByEmployee(Request $request, int $employeeId): JsonResponse
+    {
+        /** @var User $user */
+        $user = Auth::guard('api')->user();
+
+        // Cari employee beserta relasi user dan department
+        $employee = \App\Models\Employee::with(['user', 'department'])
+            ->findOrFail($employeeId);
+
+        // ========== Authorization Logic ==========
+
+        // Employee hanya bisa lihat review dirinya sendiri
+        if ($user->isEmployee()) {
+            abort_if(!$user->employee, 422, 'Employee profile not available');
+
+            // Jika employee coba lihat review orang lain, redirect ke review dirinya
+            if ($employeeId !== $user->employee->id) {
+                return $this->showByEmployee($request, $user->employee->id);
+            }
+        }
+
+        // Manager bisa lihat employee yang pernah di-review
+        if ($user->isManager()) {
+            // Cek apakah manager pernah review employee ini
+            $hasReviewedBefore = PerformanceReview::where('employee_id', $employeeId)
+                ->where('reviewer_id', $user->id)
+                ->exists();
+
+            abort_unless(
+                $hasReviewedBefore,
+                403,
+                'You can only view performance reviews for employees you have reviewed.'
+            );
+        }
+
+        // Admin HR bisa lihat semua employee (no restriction)
+
+        // ========== Query Reviews ==========
+
+        $query = PerformanceReview::where('employee_id', $employeeId)
+            ->with(['employee.user', 'employee.department', 'reviewer'])
+            ->orderByDesc('created_at');
+
+        // Filter berdasarkan periode jika ada
+        if ($period = $request->query('period')) {
+            if (preg_match('/^\d{4}$/', $period)) {
+                // Filter by year: 2025
+                $query->where('period', 'LIKE', $period . '%');
+            } elseif (preg_match('/^\d{4}[-\/](Q[1-4]|[0-1]?\d)$/', $period)) {
+                // Filter by specific period: 2025-10 atau Q4-2025
+                $query->where('period', $period);
+            }
+        }
+
+        // Filter berdasarkan tahun untuk chart
+        $year = $request->query('year', now()->format('Y'));
+
+        // ========== Get Statistics ==========
+        $statistics = PerformanceReview::getEmployeeStatistics($employeeId);
+
+        // ========== Get Chart Data ==========
+        $chartData = PerformanceReview::getMonthlyChartData($employeeId, $year);
+
+        // ========== Get Performance Trend ==========
+        $trend = PerformanceReview::getPerformanceTrend($employeeId, 3);
+
+        // ========== Pagination ==========
+        $perPage = min((int) $request->query('per_page', 10), 50);
+        $reviews = $query->paginate($perPage);
+
+        // ========== Response ==========
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee performance reviews retrieved successfully',
+            'data' => [
+                // Informasi Employee
+                'employee' => [
+                    'id' => $employee->id,
+                    'employee_code' => $employee->employee_code,
+                    'name' => $employee->user?->name,
+                    'email' => $employee->user?->email,
+                    'position' => $employee->position,
+                    'department' => [
+                        'id' => $employee->department?->id,
+                        'name' => $employee->department?->name,
+                    ],
+                    'join_date' => $employee->join_date?->format('Y-m-d'),
+                    'employment_status' => $employee->employment_status?->value,
+                ],
+
+                // Statistik Performance
+                'statistics' => $statistics,
+
+                // Performance Trend
+                'trend' => $trend,
+
+                // Chart Data untuk Grafik Monthly
+                'chart' => $chartData,
+
+                // List Reviews (Paginated)
+                'reviews' => [
+                    'current_page' => $reviews->currentPage(),
+                    'per_page' => $reviews->perPage(),
+                    'total' => $reviews->total(),
+                    'last_page' => $reviews->lastPage(),
+                    'from' => $reviews->firstItem(),
+                    'to' => $reviews->lastItem(),
+                    'data' => PerformanceReviewResource::collection($reviews->items()),
+                    'first_page_url' => $reviews->url(1),
+                    'last_page_url' => $reviews->url($reviews->lastPage()),
+                    'next_page_url' => $reviews->nextPageUrl(),
+                    'prev_page_url' => $reviews->previousPageUrl(),
+                    'path' => $reviews->path(),
+                    'links' => $reviews->linkCollection()->toArray(),
+                ],
+
+                // Applied Filters
+                'filters' => [
+                    'period' => $request->query('period'),
+                    'year' => $year,
+                    'per_page' => $perPage,
+                ],
+            ],
         ]);
     }
 }
