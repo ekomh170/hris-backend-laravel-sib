@@ -102,8 +102,8 @@ class Attendance extends BaseModel
             return $query;
         }
 
-        return $query->whereHas('employee', function ($employeeQuery) use ($department) {
-            $employeeQuery->where('department', 'like', "%{$department}%");
+        return $query->whereHas('employee.department', function ($deptQuery) use ($department) {
+            $deptQuery->where('name', 'like', "%{$department}%");
         });
     }
 

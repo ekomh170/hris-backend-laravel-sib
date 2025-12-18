@@ -40,11 +40,11 @@ class ProfileController extends Controller
 
         // HANYA load relasi manager JIKA role-nya employee dan admin_hr
        if ($role === 'manager') {
-            $user->loadMissing('employee'); // cukup employee saja
+            $user->loadMissing('employee.department');
         } else {
-            // employee & admin_hr → load manager-nya
+            // employee & admin_hr → load department dan manager-nya
             $user->loadMissing([
-                'employee.manager' => fn ($query) => $query->select('id', 'name')
+                'employee.department.manager' => fn ($query) => $query->select('id', 'name')
             ]);
         }
 

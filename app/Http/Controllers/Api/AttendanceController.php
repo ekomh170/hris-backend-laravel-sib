@@ -301,11 +301,11 @@ class AttendanceController extends Controller
             $query->whereDate('date', $date);
         }
 
-        // If manager: limit to their team (existing)
+        // If manager: limit to their team (employees in their managed department)
         if ($user->isManager()) {
             $managerId = $user->id;
-            $query->whereHas('employee', function ($employeeQuery) use ($managerId) {
-                $employeeQuery->where('manager_id', $managerId);
+            $query->whereHas('employee.department', function ($deptQuery) use ($managerId) {
+                $deptQuery->where('manager_id', $managerId);
             });
         }
 

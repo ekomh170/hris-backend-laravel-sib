@@ -43,8 +43,10 @@ class DashboardManagerController extends Controller
 
         $managerId = $user->id;
         
-        // Ambil data tim yang dikelola manager
-        $teamMembers = Employee::managedBy($managerId)->with('user')->get();
+        // Ambil data tim yang dikelola manager (melalui department yang dia kelola)
+        $teamMembers = Employee::whereHas('department', function ($deptQuery) use ($managerId) {
+            $deptQuery->where('manager_id', $managerId);
+        })->with('user')->get();
         
         if ($teamMembers->isEmpty()) {
             return response()->json([

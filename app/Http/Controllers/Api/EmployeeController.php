@@ -436,7 +436,7 @@ class EmployeeController extends Controller
             // Bangun array update karyawan hanya untuk field yang ada di request
             if (isset($data['employee_code'])) $employeeUpdateData['employee_code'] = $data['employee_code'];
             if (isset($data['position'])) $employeeUpdateData['position'] = $data['position'];
-            if (isset($data['department'])) $employeeUpdateData['department'] = $data['department'];
+            if (isset($data['department_id'])) $employeeUpdateData['department_id'] = $data['department_id'];
             if (isset($data['join_date'])) $employeeUpdateData['join_date'] = $data['join_date'];
             if (isset($data['employment_status'])) $employeeUpdateData['employment_status'] = $data['employment_status'];
             if (isset($data['contact'])) $employeeUpdateData['contact'] = $data['contact'];

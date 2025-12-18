@@ -25,19 +25,19 @@ class ProfileResource extends JsonResource
             'profile' => $employee ? [
                 'employee_code'     => $employee->employee_code,
                 'position'          => $employee->position,
-                'department'        => $employee->department,
+                'department'        => $employee->department ? [
+                    'id'   => $employee->department->id,
+                    'name' => $employee->department->name,
+                ] : null,
                 'join_date'         => $employee->join_date?->format('Y-m-d'),
                 'employment_status' => $employee->employment_status?->value ?? null,
                 'contact'           => $employee->contact,
 
-                // Nama manager (jika punya)
-                'manager' => $this->when(
-                    $this->employee?->relationLoaded('manager') && $this->employee->manager,
-                    fn () => [
-                        'id'   => $this->employee->manager->id,
-                        'name' => $this->employee->manager->name,
-                    ]
-                ),
+                // Manager dari department (untuk employee & admin_hr)
+                'manager' => $employee->department?->manager ? [
+                    'id'   => $employee->department->manager->id,
+                    'name' => $employee->department->manager->name,
+                ] : null,
             ] : null,
         ];
     }
