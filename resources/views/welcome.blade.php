@@ -108,7 +108,7 @@
                 <!-- Stats Cards -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
                     <div class="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
-                        <div class="text-4xl font-black bg-gradient-to-r from-gray-700 to-blue-500 bg-clip-text text-transparent mb-2">8</div>
+                        <div class="text-4xl font-black bg-gradient-to-r from-gray-700 to-blue-500 bg-clip-text text-transparent mb-2">9</div>
                         <div class="text-sm font-medium text-gray-600">Main Modules</div>
                     </div>
                     <div class="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
@@ -192,8 +192,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-3">Salary Slips</h3>
-                    <p class="text-gray-600 leading-relaxed">Admin HR input data gaji dengan komponen: basic salary, allowance, deduction. Sistem hitung total otomatis dan generate slip digital</p>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Salary Management & Auto-Generate</h3>
+                    <p class="text-gray-600 leading-relaxed">Input manual atau auto-generate gaji dari attendance. Single/bulk generate dengan preview calculation. Sistem hitung: basic salary + allowance - deduction</p>
                 </div>
 
                 <!-- Feature Card 5 -->
@@ -216,6 +216,17 @@
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 mb-3">Notifications</h3>
                     <p class="text-gray-600 leading-relaxed">Sistem notifikasi real-time untuk broadcast announcement, personal messages, dan status updates dengan read/unread tracking</p>
+                </div>
+
+                <!-- Feature Card 7 -->
+                <div class="card-hover bg-gradient-to-br from-emerald-50 to-green-100 rounded-2xl p-8 border border-emerald-200">
+                    <div class="w-14 h-14 bg-gradient-to-br from-emerald-600 to-green-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Department Management</h3>
+                    <p class="text-gray-600 leading-relaxed">Kelola struktur organisasi dengan CRUD departemen, assign manager, dan grouping employee berdasarkan divisi/unit kerja</p>
                 </div>
             </div>
         </div>
@@ -300,7 +311,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
                 <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-                    8 Main API Modules
+                    9 Main API Modules
                 </h2>
                 <p class="text-xl text-gray-600">
                     Complete endpoints dengan role-based access untuk semua kebutuhan HR Management
@@ -340,8 +351,8 @@
 
                 <div class="group bg-white rounded-xl p-6 border-2 border-cyan-300 hover:border-cyan-600 hover:shadow-xl transition-all">
                     <div class="text-4xl mb-3">💰</div>
-                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Salary Slips</h4>
-                    <p class="text-sm text-gray-600">Manage Salary Data, Components, Slip Generation</p>
+                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Salary Management</h4>
+                    <p class="text-sm text-gray-600">Manual Input, Auto-Generate dari Attendance, Bulk Generate, Preview Calculation</p>
                 </div>
 
                 <div class="group bg-white rounded-xl p-6 border-2 border-slate-300 hover:border-slate-600 hover:shadow-xl transition-all">
@@ -354,6 +365,12 @@
                     <div class="text-4xl mb-3">🔔</div>
                     <h4 class="font-bold text-gray-900 mb-2 text-lg">Notifications</h4>
                     <p class="text-sm text-gray-600">Personal Messages, Broadcast Announcements, Read/Unread Tracking</p>
+                </div>
+
+                <div class="group bg-white rounded-xl p-6 border-2 border-emerald-300 hover:border-emerald-600 hover:shadow-xl transition-all">
+                    <div class="text-4xl mb-3">🏢</div>
+                    <h4 class="font-bold text-gray-900 mb-2 text-lg">Department Management</h4>
+                    <p class="text-sm text-gray-600">CRUD Departemen, Assign Manager, Organization Structure</p>
                 </div>
             </div>
         </div>
