@@ -280,6 +280,7 @@ class EmployeeController extends Controller
             'join_date' => 'required|date',
             'employment_status' => 'required|in:permanent,contract,intern,resigned',
             'contact' => 'nullable|string',
+            'basic_salary' => 'nullable|numeric|min:0',
         ]);
 
         /* =================================
@@ -318,6 +319,7 @@ class EmployeeController extends Controller
                 'join_date' => $data['join_date'],
                 'employment_status' => $data['employment_status'],
                 'contact' => $data['contact'] ?? null,
+                'basic_salary' => $data['basic_salary'] ?? null,
             ];
 
             // Insert record karyawan
@@ -404,6 +406,7 @@ class EmployeeController extends Controller
             'join_date' => 'sometimes|date',
             'employment_status' => 'sometimes|in:permanent,contract,intern,resigned',
             'contact' => 'nullable|string',
+            'basic_salary' => 'nullable|numeric|min:0',
         ]);
 
         /* =================================
@@ -440,6 +443,7 @@ class EmployeeController extends Controller
             if (isset($data['join_date'])) $employeeUpdateData['join_date'] = $data['join_date'];
             if (isset($data['employment_status'])) $employeeUpdateData['employment_status'] = $data['employment_status'];
             if (isset($data['contact'])) $employeeUpdateData['contact'] = $data['contact'];
+            if (isset($data['basic_salary'])) $employeeUpdateData['basic_salary'] = $data['basic_salary'];
 
             // Update record karyawan jika ada data yang berubah
             if (!empty($employeeUpdateData)) {

@@ -25,6 +25,7 @@ class EmployeeResource extends JsonResource
             'join_date' => $this->join_date?->format('Y-m-d'),
             'employment_status' => $this->employment_status,
             'contact' => $this->contact,
+            'basic_salary' => $this->basic_salary,
 
             // Relasi user tanpa field yang sensitive
             'user' => [
